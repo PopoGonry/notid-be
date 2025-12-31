@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:h2:file:./notid;MODE=MySQL # MySQL 문법 호환 모드 (나중에 MySQL로 갈아탈 때 유리)
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create # 개발 초기에만 사용! (데이터 계속 지워짐 주의)
+    properties:
+      hibernate:
+        format_sql: true # SQL 예쁘게 줄바꿈
+
+    show-sql: true # SQL 쿼리 콘솔 출력
+
+logging:
+  level:
+    org.hibernate.SQL: debug # 쿼리 로그 레벨
