@@ -1,19 +1,26 @@
 spring:
   datasource:
-    url: jdbc:h2:file:./notid;MODE=MySQL # MySQL 문법 호환 모드 (나중에 MySQL로 갈아탈 때 유리)
+    url: jdbc:h2:file:~/notid;MODE=MySQL;AUTO_SERVER=TRUE  # 파일 모드 (프로젝트 폴더에 notid.mv.db 파일이 생김)
     username: sa
     password:
     driver-class-name: org.h2.Driver
 
+  # ★ 이 부분이 빠져 있어서 웹 접속이 안 된 겁니다!
+  h2:
+    console:
+      enabled: true       # 콘솔 켜기
+      path: /h2-console   # 접속 주소 설정
+      settings:
+        web-allow-others: true # 외부 접속 허용 (선택)
+
   jpa:
     hibernate:
-      ddl-auto: create # 개발 초기에만 사용! (데이터 계속 지워짐 주의)
+      ddl-auto: create
     properties:
       hibernate:
-        format_sql: true # SQL 예쁘게 줄바꿈
-
-    show-sql: true # SQL 쿼리 콘솔 출력
+        format_sql: true
+    show-sql: true
 
 logging:
   level:
-    org.hibernate.SQL: debug # 쿼리 로그 레벨
+    org.hibernate.SQL: debug
