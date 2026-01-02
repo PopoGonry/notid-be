@@ -1,5 +1,6 @@
 package com.popogonry.notid.user;
 
+import com.popogonry.notid.user.dto.UserUpdateRequest;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -55,6 +56,12 @@ public class User {
     public User(String email, String password, String name, Gender gender, String phone) {
         this.email = email;
         this.password = password;
+        this.name = name;
+        this.gender = gender;
+        this.phone = phone;
+    }
+
+    public void updateInfo(String name, Gender gender, String phone) {
         this.name = name;
         this.gender = gender;
         this.phone = phone;

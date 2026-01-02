@@ -10,6 +10,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,6 +34,7 @@ public class UserSignUpRequest {
     @NotBlank(message = "연락처는 필수입니다.")
     private String phone;
 
+    private List<Long> organizationIds = new ArrayList<>();
 
     public User toEntity(String encodedPassword) {
         return User.builder()

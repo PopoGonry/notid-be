@@ -34,7 +34,7 @@ class UserServiceTest {
     public void 회원가입() throws Exception {
         //given
         String rawPassword = "password1234";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", rawPassword, "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", rawPassword, "name", Gender.ETC, "010-0000-0000", null);
 
         //when
         Long userId = userService.signUp(userSignUpRequest);
@@ -56,10 +56,10 @@ class UserServiceTest {
     @Test
     public void 회원가입_이메일_중복검증() throws Exception {
         //given
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
         userService.signUp(userSignUpRequest);
 
-        UserSignUpRequest sameEmail = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-3333-4444");
+        UserSignUpRequest sameEmail = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-3333-4444", null);
 
         //when
         //then
@@ -71,10 +71,10 @@ class UserServiceTest {
     @Test
     public void 회원가입_연락처_중복검증() throws Exception {
         //given
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
         userService.signUp(userSignUpRequest);
 
-        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
 
         //when
         //then
@@ -88,7 +88,7 @@ class UserServiceTest {
         //given
         String email = "test@gmail.com";
         String password = "password";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000", null);
         userService.signUp(userSignUpRequest);
 
         UserSignInRequest userSignInRequest = new UserSignInRequest(email, password);
@@ -105,7 +105,7 @@ class UserServiceTest {
         //given
         String email = "test@gmail.com";
         String password = "password";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000", null);
         userService.signUp(userSignUpRequest);
 
         UserSignInRequest userSignInRequest = new UserSignInRequest(email, password);
@@ -124,7 +124,7 @@ class UserServiceTest {
         //given
         String email = "test@gmail.com";
         String password = "password";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000", null);
         userService.signUp(userSignUpRequest);
 
         //when
