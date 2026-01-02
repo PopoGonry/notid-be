@@ -30,5 +30,8 @@ public class UserService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
         }
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new IllegalArgumentException("이미 존재하는 연락처입니다.");
+        }
     }
 }

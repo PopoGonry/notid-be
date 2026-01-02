@@ -3,6 +3,7 @@ package com.popogonry.notid.user;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -34,6 +35,15 @@ public class User {
     @Column(nullable = false)
     private String name;
 
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Gender gender;
+
+    @NotBlank
+    @Column(nullable = false)
+    private String phone;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -42,9 +52,11 @@ public class User {
     private LocalDateTime updatedAt;
     
     @Builder
-    public User(String email, String password, String name) {
+    public User(String email, String password, String name, Gender gender, String phone) {
         this.email = email;
         this.password = password;
         this.name = name;
+        this.gender = gender;
+        this.phone = phone;
     }
 }

@@ -1,6 +1,7 @@
 package com.popogonry.notid.user;
 
 import com.popogonry.notid.user.dto.UserSignUpRequest;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,7 +27,7 @@ class UserServiceTest {
     public void 회원가입() throws Exception {
         //given
         String rawPassword = "password1234";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", rawPassword, "name");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", rawPassword, "name", Gender.ETC, "010-0000-0000");
 
         //when
         Long userId = userService.signUp(userSignUpRequest);
@@ -46,15 +47,32 @@ class UserServiceTest {
     }
 
     @Test
-    public void 회원가입_중복검증() throws Exception {
+    public void 회원가입_이메일_중복검증() throws Exception {
         //given
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name");
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000");
         userService.signUp(userSignUpRequest);
+
+        UserSignUpRequest sameEmail = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-3333-4444");
 
         //when
         //then
-        assertThrows(IllegalArgumentException.class, () -> {
-            userService.signUp(userSignUpRequest);
-        });
+        Assertions.assertThatThrownBy(() -> userService.signUp(sameEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("이미 존재하는 이메일입니다.");
+    }
+
+    @Test
+    public void 회원가입_연락처_중복검증() throws Exception {
+        //given
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000");
+        userService.signUp(userSignUpRequest);
+
+        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "name", Gender.ETC, "010-0000-0000");
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> userService.signUp(samePhone))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("이미 존재하는 연락처입니다.");
     }
 }
