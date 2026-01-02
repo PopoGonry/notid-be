@@ -24,3 +24,7 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
+
+jwt:
+  secret: V2hhdElzVGhpc1NlY3JldEtleUZvckpXVFZlcmlmaWNhdGlvbg== # 임시 키 (나중엔 환경변수로 빼야 함)
+  expiration: 3600000 # 1시간 (밀리초 단위)
