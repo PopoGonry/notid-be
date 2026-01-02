@@ -1,5 +1,6 @@
 package com.popogonry.notid.user.dto;
 
+import com.popogonry.notid.organization.Organization;
 import com.popogonry.notid.user.Gender;
 import com.popogonry.notid.user.User;
 import jakarta.validation.constraints.Email;
