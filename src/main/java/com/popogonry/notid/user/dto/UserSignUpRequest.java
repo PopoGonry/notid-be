@@ -1,8 +1,10 @@
 package com.popogonry.notid.user.dto;
 
+import com.popogonry.notid.user.Gender;
 import com.popogonry.notid.user.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,11 +24,20 @@ public class UserSignUpRequest {
     @NotBlank(message = "이름은 필수입니다.")
     private String name;
 
+    @NotNull(message = "성별은 필수입니다.")
+    private Gender gender;
+
+    @NotBlank(message = "연락처는 필수입니다.")
+    private String phone;
+
+
     public User toEntity(String encodedPassword) {
         return User.builder()
                 .email(this.email)
                 .password(encodedPassword)
                 .name(this.name)
+                .gender(this.gender)
+                .phone(this.phone)
                 .build();
     }
 }
