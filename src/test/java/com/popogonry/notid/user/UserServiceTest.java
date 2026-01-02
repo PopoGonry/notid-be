@@ -44,4 +44,17 @@ class UserServiceTest {
         // 암호화 2차 확인
         assertTrue(passwordEncoder.matches(rawPassword, savedUser.getPassword()));
     }
+
+    @Test
+    public void 회원가입_중복검증() throws Exception {
+        //given
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name");
+        userService.signUp(userSignUpRequest);
+
+        //when
+        //then
+        assertThrows(IllegalArgumentException.class, () -> {
+            userService.signUp(userSignUpRequest);
+        });
+    }
 }
