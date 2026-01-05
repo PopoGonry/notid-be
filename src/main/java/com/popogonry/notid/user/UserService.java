@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.AccessDeniedException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -82,4 +83,40 @@ public class UserService {
 
         return jwtTokenProvider.createToken(user.getEmail());
     }
+
+
+    @Transactional
+    public Long updateInfo(Long userId, UserUpdateRequest request, String tokenEmail) throws AccessDeniedException {
+
+        User targetUser = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+
+        if(!targetUser.getEmail().equals(tokenEmail)) {
+            throw new org.springframework.security.access.AccessDeniedException("본인의 정보만 수정할 수 있습니다.");
+        }
+
+        organizationUserRepository.deleteAllByUser(targetUser);
+        organizationUserSet(request.getOrganizationIds(), targetUser);
+
+        targetUser.updateInfo(request.getName(), request.getGender(), request.getPhone());
+
+        return targetUser.getId();
+    }
+
+    // 토큰에서 값 꺼내와서, 본인 것만 수정 가능한 방식
+//    @Transactional
+//    public Long updateInfo(UserUpdateRequest request, String email) {
+//
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+//
+//        organizationUserRepository.deleteAllByUser(user);
+//        organizationUserSet(request.getOrganizationIds(), user);
+//
+//        user.updateInfo(request.getName(), request.getGender(), request.getPhone());
+//
+//        return user.getId();
+//    }
+
+
 }

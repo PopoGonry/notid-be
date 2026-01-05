@@ -4,10 +4,13 @@ import com.popogonry.notid.global.jwt.JwtAuthenticationFilter;
 import com.popogonry.notid.global.jwt.JwtTokenProvider;
 import com.popogonry.notid.user.dto.UserSignInRequest;
 import com.popogonry.notid.user.dto.UserSignUpRequest;
+import com.popogonry.notid.user.dto.UserUpdateRequest;
+import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,9 @@ class UserServiceTest {
 
     @Autowired
     JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    EntityManager em;
 
     @Test
     public void 회원가입() throws Exception {
@@ -56,10 +62,9 @@ class UserServiceTest {
     @Test
     public void 회원가입_이메일_중복검증() throws Exception {
         //given
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
-        userService.signUp(userSignUpRequest);
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
-        UserSignUpRequest sameEmail = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-3333-4444", null);
+        UserSignUpRequest sameEmail = new UserSignUpRequest(user.getEmail(), "password", "name", Gender.ETC, "010-3333-4444", null);
 
         //when
         //then
@@ -71,10 +76,9 @@ class UserServiceTest {
     @Test
     public void 회원가입_연락처_중복검증() throws Exception {
         //given
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
-        userService.signUp(userSignUpRequest);
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
-        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
+        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "name", Gender.ETC, user.getPhone(), null);
 
         //when
         //then
@@ -86,12 +90,9 @@ class UserServiceTest {
     @Test
     public void 로그인() throws Exception {
         //given
-        String email = "test@gmail.com";
-        String password = "password";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000", null);
-        userService.signUp(userSignUpRequest);
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
-        UserSignInRequest userSignInRequest = new UserSignInRequest(email, password);
+        UserSignInRequest userSignInRequest = new UserSignInRequest(user.getEmail(), "password");
 
         //when
         String token = userService.signIn(userSignInRequest);
@@ -103,12 +104,9 @@ class UserServiceTest {
     @Test
     public void 로그인_JWT검증() throws Exception {
         //given
-        String email = "test@gmail.com";
-        String password = "password";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000", null);
-        userService.signUp(userSignUpRequest);
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
-        UserSignInRequest userSignInRequest = new UserSignInRequest(email, password);
+        UserSignInRequest userSignInRequest = new UserSignInRequest(user.getEmail(), "password");
         String token = userService.signIn(userSignInRequest);
 
         //when
@@ -116,16 +114,13 @@ class UserServiceTest {
         String tokenEmail = authentication.getName();
 
         //then
-        assertEquals(email, tokenEmail);
+        assertEquals(user.getEmail(), tokenEmail);
     }
 
     @Test
     public void 로그인_실패_비밀번호_틀림() throws Exception {
         //given
-        String email = "test@gmail.com";
-        String password = "password";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest(email, password, "name", Gender.ETC, "010-0000-0000", null);
-        userService.signUp(userSignUpRequest);
+        String email = userRepository.findById(simpleSignUp()).orElseThrow().getEmail();
 
         //when
         UserSignInRequest wrongPasswordRequest = new UserSignInRequest(email, "wrongPassword");
@@ -146,5 +141,45 @@ class UserServiceTest {
         Assertions.assertThatThrownBy(() -> userService.signIn(noUserRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("가입되지 않은 이메일입니다."); // UserService에 적은 메시지와 똑같아야 함!
+    }
+
+    @Test
+    public void 사용자_정보_수정() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        UserUpdateRequest userUpdateRequest = new UserUpdateRequest("changeName", Gender.FEMALE, "010-1234-5678", null);
+
+        //when
+        userService.updateInfo(user.getId(), userUpdateRequest, user.getEmail());
+
+        em.flush();
+        em.clear();
+
+        //then
+        assertEquals("changeName", user.getName());
+        assertEquals(Gender.FEMALE, user.getGender());
+        assertEquals("010-1234-5678", user.getPhone());
+    }
+
+    @Test
+    public void 사용자_정보_수정_실패_권한없음() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        String hackerEmail = "hacker@gmail.com";
+        UserUpdateRequest request = new UserUpdateRequest("hackedName", Gender.MALE, "010-6666-6666", null);
+
+        //when
+        //then
+        Assertions.assertThatThrownBy(() -> userService.updateInfo(user.getId(), request, hackerEmail))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("본인의 정보만 수정할 수 있습니다.");
+
+    }
+
+    private Long simpleSignUp() {
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
+        return userService.signUp(userSignUpRequest);
     }
 }
