@@ -1,14 +1,16 @@
 package com.popogonry.notid.user;
 
 
-import com.popogonry.notid.user.dto.UserSignInRequest;
-import com.popogonry.notid.user.dto.UserSignInResponse;
-import com.popogonry.notid.user.dto.UserSignUpRequest;
+import com.popogonry.notid.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.nio.file.AccessDeniedException;
 
 @RestController
 @RequiredArgsConstructor
@@ -22,9 +24,9 @@ public class UserController {
         // @RequestBody: JSON 데이터를 DTO로 변환
         // @Valid: DTO 안에 있는 @NotBlank, @Email 같은 조건 검사
 
-        Long userId = userService.signUp(request);
+        Long signedUpUserId = userService.signUp(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(signedUpUserId);
     }
 
     @PostMapping("/signin")
@@ -32,6 +34,51 @@ public class UserController {
         String token = userService.signIn(request);
         return ResponseEntity.ok(new UserSignInResponse(token));
     }
+
+    @PatchMapping("/{userId}")
+    public ResponseEntity<Long> updateInfo(
+            @PathVariable Long userId,
+            @RequestBody @Valid UserUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails // 현재 로그인한 사람
+    ) {
+        Long updatedUserId = userService.updateInfo(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedUserId);
+    }
+
+
+    // JWT 토큰 정보에서 데이터를 뽑아와서, 자신의 정보만 수정 가능한 형태
+//    @PatchMapping("/me")
+//    public ResponseEntity<Long> updateInfo(
+//            @RequestBody @Valid UserUpdateRequest request,
+//            @AuthenticationPrincipal UserDetails userDetails
+//    ) {
+//        Long updatedId = userService.updateInfo(request, userDetails.getUsername());
+//
+//        return ResponseEntity.ok(updatedId);
+//    }
+
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<Long> updatePassword(
+            @PathVariable Long userId,
+            @RequestBody @Valid UserPasswordUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long updatedUserId = userService.updatePassword(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedUserId);
+
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Long> deleteUser(
+            @PathVariable Long userId,
+            @RequestBody @Valid UserWithdrawRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long deletedUserId = userService.withdraw(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(deletedUserId);
+    }
+
+
 
     @GetMapping("/test")
     public String test() {
