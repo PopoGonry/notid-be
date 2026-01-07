@@ -37,9 +37,6 @@ class UserServiceTest {
 
     @Autowired
     EntityManager em;
-    @Autowired
-    private RequestAttributes requestAttributes;
-    private ChannelUserRepository channelUserRepository;
 
     @Test
     public void 회원가입() throws Exception {
@@ -181,7 +178,7 @@ class UserServiceTest {
         //then
         assertThatThrownBy(() -> userService.updateInfo(user.getId(), request, hackerEmail))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("본인의 정보만 수정할 수 있습니다.");
+                .hasMessage("본인의 계정에만 접근할 수 있습니다.");
 
     }
 
@@ -228,9 +225,9 @@ class UserServiceTest {
 
         //when
         //then
-        assertThatThrownBy(() -> userService.updatePassword(user.getId() + 1L, request, user.getEmail()))
+        assertThatThrownBy(() -> userService.updatePassword(user.getId(), request, "wrong" + user.getEmail()))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("본인의 비밀번호만 변경할 수 있습니다.");
+                .hasMessage("본인의 계정에만 접근할 수 있습니다.");
     }
     @Test
     public void 사용자_비밀번호_수정_실패_확인비밀번호다름() throws Exception {
