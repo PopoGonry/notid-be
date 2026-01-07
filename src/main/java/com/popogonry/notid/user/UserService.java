@@ -100,9 +100,7 @@ public class UserService {
         User targetUser = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
 
-        if(!targetUser.getEmail().equals(tokenEmail)) {
-            throw new AccessDeniedException("본인의 정보만 수정할 수 있습니다.");
-        }
+        validateOwner(targetUser, tokenEmail);
 
         targetUser.updateInfo(request.getName(), request.getGender(), request.getPhone());
 
@@ -129,11 +127,9 @@ public class UserService {
 
     @Transactional
     public Long updatePassword(Long userId, UserPasswordUpdateRequest request, String tokenEmail) {
-        User user = userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
 
-        if(!user.getId().equals(userId)) {
-            throw new AccessDeniedException("본인의 비밀번호만 변경할 수 있습니다.");
-        }
+        validateOwner(user, tokenEmail);
 
         checkPassword(request.getOldPassword(), user);
 
@@ -150,13 +146,17 @@ public class UserService {
         return user.getId();
     }
 
+    private static void validateOwner(User user, String tokenEmail) {
+        if (!user.getEmail().equals(tokenEmail)) {
+            throw new AccessDeniedException("본인의 계정에만 접근할 수 있습니다.");
+        }
+    }
+
     @Transactional
     public Long withdraw(Long userId, UserWithdrawRequest request, String tokenEmail) {
-        User user = userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
 
-        if(!user.getId().equals(userId)) {
-            throw new AccessDeniedException("본인의 계정만 탈퇴할 수 있습니다.");
-        }
+        validateOwner(user, tokenEmail);
 
         checkPassword(request.getPassword(), user);
 
