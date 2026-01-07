@@ -2,6 +2,7 @@ package com.popogonry.notid.user;
 
 import com.popogonry.notid.global.jwt.JwtAuthenticationFilter;
 import com.popogonry.notid.global.jwt.JwtTokenProvider;
+import com.popogonry.notid.user.dto.UserPasswordUpdateRequest;
 import com.popogonry.notid.user.dto.UserSignInRequest;
 import com.popogonry.notid.user.dto.UserSignUpRequest;
 import com.popogonry.notid.user.dto.UserUpdateRequest;
@@ -15,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
@@ -40,7 +42,7 @@ class UserServiceTest {
     public void 회원가입() throws Exception {
         //given
         String rawPassword = "password1234";
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", rawPassword, "name", Gender.ETC, "010-0000-0000", null);
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", rawPassword, rawPassword, "name", Gender.ETC, "010-0000-0000", null);
 
         //when
         Long userId = userService.signUp(userSignUpRequest);
@@ -64,11 +66,11 @@ class UserServiceTest {
         //given
         User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
-        UserSignUpRequest sameEmail = new UserSignUpRequest(user.getEmail(), "password", "name", Gender.ETC, "010-3333-4444", null);
+        UserSignUpRequest sameEmail = new UserSignUpRequest(user.getEmail(), "password", "password", "name", Gender.ETC, "010-3333-4444", null);
 
         //when
         //then
-        Assertions.assertThatThrownBy(() -> userService.signUp(sameEmail))
+        assertThatThrownBy(() -> userService.signUp(sameEmail))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("이미 존재하는 이메일입니다.");
     }
@@ -78,11 +80,11 @@ class UserServiceTest {
         //given
         User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
-        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "name", Gender.ETC, user.getPhone(), null);
+        UserSignUpRequest samePhone = new UserSignUpRequest("test2@gmail.com", "password", "password", "name", Gender.ETC, user.getPhone(), null);
 
         //when
         //then
-        Assertions.assertThatThrownBy(() -> userService.signUp(samePhone))
+        assertThatThrownBy(() -> userService.signUp(samePhone))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("이미 존재하는 연락처입니다.");
     }
@@ -126,7 +128,7 @@ class UserServiceTest {
         UserSignInRequest wrongPasswordRequest = new UserSignInRequest(email, "wrongPassword");
 
         //then
-        Assertions.assertThatThrownBy(() -> userService.signIn(wrongPasswordRequest))
+        assertThatThrownBy(() -> userService.signIn(wrongPasswordRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("비밀번호가 일치하지 않습니다.");
     }
@@ -138,7 +140,7 @@ class UserServiceTest {
         UserSignInRequest noUserRequest = new UserSignInRequest("ghost@gmail.com", "password");
 
         //when & then
-        Assertions.assertThatThrownBy(() -> userService.signIn(noUserRequest))
+        assertThatThrownBy(() -> userService.signIn(noUserRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("가입되지 않은 이메일입니다."); // UserService에 적은 메시지와 똑같아야 함!
     }
@@ -156,10 +158,12 @@ class UserServiceTest {
         em.flush();
         em.clear();
 
+        User updatedUser = userRepository.findById(user.getId()).orElseThrow();
+
         //then
-        assertEquals("changeName", user.getName());
-        assertEquals(Gender.FEMALE, user.getGender());
-        assertEquals("010-1234-5678", user.getPhone());
+        assertEquals("changeName", updatedUser.getName());
+        assertEquals(Gender.FEMALE, updatedUser.getGender());
+        assertEquals("010-1234-5678", updatedUser.getPhone());
     }
 
     @Test
@@ -172,14 +176,91 @@ class UserServiceTest {
 
         //when
         //then
-        Assertions.assertThatThrownBy(() -> userService.updateInfo(user.getId(), request, hackerEmail))
+        assertThatThrownBy(() -> userService.updateInfo(user.getId(), request, hackerEmail))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("본인의 정보만 수정할 수 있습니다.");
 
     }
+    
+    @Test
+    public void 사용자_비밀번호_수정() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        String newPassword = "newPassword";
+        UserPasswordUpdateRequest request = new UserPasswordUpdateRequest("password", newPassword, newPassword);
+
+        //when
+        userService.updatePassword(user.getId(), request, user.getEmail());
+
+        em.flush();
+        em.clear();
+
+        User updatedUser = userRepository.findById(user.getId()).orElseThrow();
+
+        //then
+        assertTrue(passwordEncoder.matches(newPassword, updatedUser.getPassword()));
+    }
+
+    @Test
+    public void 사용자_비밀번호_수정_실패_기존비밀번호다름() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        UserPasswordUpdateRequest request = new UserPasswordUpdateRequest("wrongPassword", "newPassword", "newPassword");
+
+        //when
+        //then
+        assertThatThrownBy(() -> userService.updatePassword(user.getId(), request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("비밀번호가 일치하지 않습니다.");
+    }
+
+    @Test
+    public void 사용자_비밀번호_수정_실패_권한없음() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        UserPasswordUpdateRequest request = new UserPasswordUpdateRequest("password", "newPassword", "newPassword");
+
+        //when
+        //then
+        assertThatThrownBy(() -> userService.updatePassword(user.getId() + 1L, request, user.getEmail()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("본인의 비밀번호만 변경할 수 있습니다.");
+    }
+    @Test
+    public void 사용자_비밀번호_수정_실패_새비밀번호다름() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        UserPasswordUpdateRequest request = new UserPasswordUpdateRequest("password", "newPassword", "diffPassword");
+
+        //when
+        //then
+        assertThatThrownBy(() -> userService.updatePassword(user.getId(), request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("새 비밀번호와 확인 비밀번호가 일치하지 않습니다.");
+    }
+
+    @Test
+    public void 사용자_비밀번호_수정_실패_기존비밀번호같음() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        UserPasswordUpdateRequest request = new UserPasswordUpdateRequest("password", "password", "password");
+
+        //when
+        //then
+        assertThatThrownBy(() -> userService.updatePassword(user.getId(), request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("기존 비밀번호와 동일하게 변경할 수 없습니다.");
+    }
+
+    
 
     private Long simpleSignUp() {
-        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "name", Gender.ETC, "010-0000-0000", null);
+        UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "password", "name", Gender.ETC, "010-0000-0000", null);
         return userService.signUp(userSignUpRequest);
     }
 }

@@ -66,4 +66,8 @@ public class User {
         this.gender = gender;
         this.phone = phone;
     }
+
+    public void updatePassword(String password) {
+        this.password = password;
+    }
 }

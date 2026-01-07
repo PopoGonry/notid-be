@@ -1,10 +1,7 @@
 package com.popogonry.notid.user;
 
 
-import com.popogonry.notid.user.dto.UserSignInRequest;
-import com.popogonry.notid.user.dto.UserSignInResponse;
-import com.popogonry.notid.user.dto.UserSignUpRequest;
-import com.popogonry.notid.user.dto.UserUpdateRequest;
+import com.popogonry.notid.user.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -42,10 +39,10 @@ public class UserController {
     public ResponseEntity<Long> updateInfo(
             @PathVariable Long userId,
             @RequestBody @Valid UserUpdateRequest request,
-            @AuthenticationPrincipal UserDetails userDetails// 현재 로그인한 사람
-    ) throws AccessDeniedException {
-        userService.updateInfo(userId, request, userDetails.getUsername());
-        return ResponseEntity.ok(userId);
+            @AuthenticationPrincipal UserDetails userDetails // 현재 로그인한 사람
+    ) {
+        Long resultUserId = userService.updateInfo(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(resultUserId);
     }
 
 
@@ -59,6 +56,17 @@ public class UserController {
 //
 //        return ResponseEntity.ok(updatedId);
 //    }
+
+    @PatchMapping("/{userId}/password")
+    public ResponseEntity<Long> updatePassword(
+            @PathVariable Long userId,
+            @RequestBody @Valid UserPasswordUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long resultUserId = userService.updatePassword(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(resultUserId);
+
+    }
 
 
     @GetMapping("/test")
