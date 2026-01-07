@@ -45,12 +45,17 @@ public class User {
     @Column(nullable = false)
     private String phone;
 
+    @Enumerated(EnumType.STRING)
+    private UserStatus status = UserStatus.ACTIVE;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    private LocalDateTime deletedAt;
     
     @Builder
     public User(String email, String password, String name, Gender gender, String phone) {
@@ -69,5 +74,10 @@ public class User {
 
     public void updatePassword(String password) {
         this.password = password;
+    }
+
+    public void withdraw() {
+        this.status = UserStatus.WITHDRAWN;
+        this.deletedAt = LocalDateTime.now();
     }
 }

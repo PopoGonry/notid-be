@@ -12,6 +12,6 @@ public interface OrganizationUserRepository extends JpaRepository<OrganizationUs
     List<OrganizationUser> findByUser(User user);
 
     @Modifying
-    @Query("delete from OrganizationUser ou where ou.user = :user")
-    void deleteAllByUser(@Param("user") User user);
+    @Query("delete from OrganizationUser ou where ou.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

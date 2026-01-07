@@ -1,11 +1,13 @@
 package com.popogonry.notid.user;
 
+import com.popogonry.notid.channeluser.ChannelUserRepository;
 import com.popogonry.notid.global.jwt.JwtTokenProvider;
 import com.popogonry.notid.organization.Organization;
 import com.popogonry.notid.organization.OrganizationRepository;
 import com.popogonry.notid.organizationuser.OrganizationUser;
 import com.popogonry.notid.organizationuser.OrganizationUserRepository;
 import com.popogonry.notid.user.dto.*;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +28,8 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final OrganizationRepository organizationRepository;
     private final OrganizationUserRepository organizationUserRepository;
+    private final ChannelUserRepository channelUserRepository;
+    private final EntityManager em;
 
     @Transactional
     public Long signUp(UserSignUpRequest request) {
@@ -75,6 +79,10 @@ public class UserService {
     public String signIn(UserSignInRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
 
+        if (user.getStatus() == UserStatus.WITHDRAWN) {
+            throw new IllegalArgumentException("탈퇴한 계정입니다.");
+        }
+
         checkPassword(request.getPassword(), user);
 
         return jwtTokenProvider.createToken(user.getEmail());
@@ -96,10 +104,10 @@ public class UserService {
             throw new AccessDeniedException("본인의 정보만 수정할 수 있습니다.");
         }
 
-        organizationUserRepository.deleteAllByUser(targetUser);
-        organizationUserSet(request.getOrganizationIds(), targetUser);
-
         targetUser.updateInfo(request.getName(), request.getGender(), request.getPhone());
+
+        organizationUserRepository.deleteAllByUserId(targetUser.getId());
+        organizationUserSet(request.getOrganizationIds(), targetUser);
 
         return targetUser.getId();
     }
@@ -129,7 +137,7 @@ public class UserService {
 
         checkPassword(request.getOldPassword(), user);
 
-        if (!request.isNewPasswordSame()) {
+        if(!request.isNewPasswordSame()) {
             throw new IllegalArgumentException("새 비밀번호와 확인 비밀번호가 일치하지 않습니다.");
         }
 
@@ -140,5 +148,30 @@ public class UserService {
         user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
 
         return user.getId();
+    }
+
+    @Transactional
+    public Long withdraw(Long userId, UserWithdrawRequest request, String tokenEmail) {
+        User user = userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+
+        if(!user.getId().equals(userId)) {
+            throw new AccessDeniedException("본인의 계정만 탈퇴할 수 있습니다.");
+        }
+
+        checkPassword(request.getPassword(), user);
+
+        if(!request.isPasswordSame()) {
+            throw new IllegalArgumentException("비밀번호와 확인 비밀번호가 일치하지 않습니다.");
+        }
+
+        user.withdraw();
+
+        em.flush();
+
+        organizationUserRepository.deleteAllByUserId(user.getId());
+        channelUserRepository.deleteAllByUserId(user.getId());
+
+        em.clear();
+        return userId;
     }
 }

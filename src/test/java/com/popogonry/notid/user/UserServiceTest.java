@@ -1,11 +1,10 @@
 package com.popogonry.notid.user;
 
+import com.popogonry.notid.channeluser.ChannelUser;
+import com.popogonry.notid.channeluser.ChannelUserRepository;
 import com.popogonry.notid.global.jwt.JwtAuthenticationFilter;
 import com.popogonry.notid.global.jwt.JwtTokenProvider;
-import com.popogonry.notid.user.dto.UserPasswordUpdateRequest;
-import com.popogonry.notid.user.dto.UserSignInRequest;
-import com.popogonry.notid.user.dto.UserSignUpRequest;
-import com.popogonry.notid.user.dto.UserUpdateRequest;
+import com.popogonry.notid.user.dto.*;
 import jakarta.persistence.EntityManager;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -15,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestAttributes;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,6 +37,9 @@ class UserServiceTest {
 
     @Autowired
     EntityManager em;
+    @Autowired
+    private RequestAttributes requestAttributes;
+    private ChannelUserRepository channelUserRepository;
 
     @Test
     public void 회원가입() throws Exception {
@@ -181,7 +184,7 @@ class UserServiceTest {
                 .hasMessage("본인의 정보만 수정할 수 있습니다.");
 
     }
-    
+
     @Test
     public void 사용자_비밀번호_수정() throws Exception {
         //given
@@ -203,7 +206,7 @@ class UserServiceTest {
     }
 
     @Test
-    public void 사용자_비밀번호_수정_실패_기존비밀번호다름() throws Exception {
+    public void 사용자_비밀번호_수정_실패_비밀번호틀림() throws Exception {
         //given
         User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
@@ -230,7 +233,7 @@ class UserServiceTest {
                 .hasMessage("본인의 비밀번호만 변경할 수 있습니다.");
     }
     @Test
-    public void 사용자_비밀번호_수정_실패_새비밀번호다름() throws Exception {
+    public void 사용자_비밀번호_수정_실패_확인비밀번호다름() throws Exception {
         //given
         User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
@@ -244,7 +247,7 @@ class UserServiceTest {
     }
 
     @Test
-    public void 사용자_비밀번호_수정_실패_기존비밀번호같음() throws Exception {
+    public void 사용자_비밀번호_수정_실패_기존비밀번호동일변경() throws Exception {
         //given
         User user = userRepository.findById(simpleSignUp()).orElseThrow();
 
@@ -257,7 +260,24 @@ class UserServiceTest {
                 .hasMessage("기존 비밀번호와 동일하게 변경할 수 없습니다.");
     }
 
-    
+    @Test
+    public void 사용자_탈퇴() throws Exception {
+        //given
+        User user = userRepository.findById(simpleSignUp()).orElseThrow();
+
+        UserWithdrawRequest request = new UserWithdrawRequest("password", "password");
+
+        //when
+        userService.withdraw(user.getId(), request,  user.getEmail());
+
+
+        //then
+
+    }
+
+
+
+
 
     private Long simpleSignUp() {
         UserSignUpRequest userSignUpRequest = new UserSignUpRequest("test@gmail.com", "password", "password", "name", Gender.ETC, "010-0000-0000", null);

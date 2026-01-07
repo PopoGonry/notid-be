@@ -24,9 +24,9 @@ public class UserController {
         // @RequestBody: JSON 데이터를 DTO로 변환
         // @Valid: DTO 안에 있는 @NotBlank, @Email 같은 조건 검사
 
-        Long userId = userService.signUp(request);
+        Long signedUpUserId = userService.signUp(request);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(signedUpUserId);
     }
 
     @PostMapping("/signin")
@@ -41,8 +41,8 @@ public class UserController {
             @RequestBody @Valid UserUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails // 현재 로그인한 사람
     ) {
-        Long resultUserId = userService.updateInfo(userId, request, userDetails.getUsername());
-        return ResponseEntity.ok(resultUserId);
+        Long updatedUserId = userService.updateInfo(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedUserId);
     }
 
 
@@ -63,10 +63,21 @@ public class UserController {
             @RequestBody @Valid UserPasswordUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        Long resultUserId = userService.updatePassword(userId, request, userDetails.getUsername());
-        return ResponseEntity.ok(resultUserId);
+        Long updatedUserId = userService.updatePassword(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedUserId);
 
     }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Long> deleteUser(
+            @PathVariable Long userId,
+            @RequestBody @Valid UserWithdrawRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long deletedUserId = userService.withdraw(userId, request, userDetails.getUsername());
+        return ResponseEntity.ok(deletedUserId);
+    }
+
 
 
     @GetMapping("/test")

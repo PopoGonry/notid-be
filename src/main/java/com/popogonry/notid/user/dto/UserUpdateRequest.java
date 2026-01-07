@@ -16,13 +16,13 @@ import java.util.List;
 @AllArgsConstructor
 public class UserUpdateRequest {
 
-    @NotBlank
+    @NotBlank(message = "이름은 필수입니다.")
     private String name;
 
-    @NotNull
+    @NotNull(message = "성별은 필수입니다.")
     private Gender gender;
 
-    @NotBlank
+    @NotBlank(message = "연락처는 필수입니다.")
     private String phone;
 
     private List<Long> organizationIds = new ArrayList<>();
