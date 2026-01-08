@@ -10,7 +10,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.AccessDeniedException;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,6 +17,7 @@ import java.nio.file.AccessDeniedException;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
     @PostMapping("/signup")
     public ResponseEntity<Long> signup(@RequestBody @Valid UserSignUpRequest request) {
@@ -33,6 +33,15 @@ public class UserController {
     public ResponseEntity<UserSignInResponse> signin(@RequestBody @Valid UserSignInRequest request) {
         String token = userService.signIn(request);
         return ResponseEntity.ok(new UserSignInResponse(token));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserResponse> getUser(
+            @PathVariable("userId") Long userId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        User user = userService.getUser(userId, userDetails.getUsername());
+        return ResponseEntity.ok(UserResponse.from(user));
     }
 
     @PatchMapping("/{userId}")

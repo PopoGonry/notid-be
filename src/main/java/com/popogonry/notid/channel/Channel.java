@@ -36,6 +36,10 @@ public class Channel {
     @Column(nullable = false)
     private JoinType joinType = JoinType.FREE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ChannelStatus status = ChannelStatus.ACTIVE;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -43,10 +47,16 @@ public class Channel {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
+    private LocalDateTime deletedAt;
+
     @Builder
     public Channel(String name, String description, JoinType joinType) {
         this.name = name;
         this.description = description;
         this.joinType = (joinType == null) ? JoinType.FREE : joinType;
+    }
+
+    public void inactive() {
+        this.status = ChannelStatus.INACTIVE;
     }
 }

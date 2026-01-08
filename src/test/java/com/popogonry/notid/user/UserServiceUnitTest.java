@@ -189,6 +189,33 @@ public class UserServiceUnitTest {
     }
 
     @Test
+    @DisplayName("사용자 정보 조회 성공")
+    public void getUser_success() throws Exception {
+        //given
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+        //when
+        User findUser = userService.getUser(userId, email);
+
+        //then
+
+        assertThat(findUser).isEqualTo(user);
+    }
+
+    @Test
+    @DisplayName("사용자 정보 조회 실패 - 권한 없음")
+    public void getUser_fail_access_denied() throws Exception {
+        //given
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+        //when
+        //then
+        assertThatThrownBy(() -> userService.getUser(userId, "wrong" + email))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("본인의 계정에만 접근할 수 있습니다.");
+    }
+
+    @Test
     @DisplayName("사용자 정보 수정 성공")
     public void updateInfo_success() throws Exception {
         //given

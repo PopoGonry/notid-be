@@ -40,12 +40,11 @@ public class UserService {
 
         User savedUser = userRepository.save(request.toEntity(encodedPassword));
 
-        List<Long> orgIds = request.getOrganizationIds();
-        organizationUserSet(orgIds, savedUser);
+        organizationUserSet(request.getOrganizationIds(), savedUser);
         return savedUser.getId();
     }
 
-    private void organizationUserSet(List<Long> orgIds, User savedUser) {
+    private void organizationUserSet(List<Long> orgIds, User user) {
         if(orgIds != null && !orgIds.isEmpty()) {
 
             Set<Long> uniqueOrgIds = new HashSet<>(orgIds);
@@ -57,7 +56,7 @@ public class UserService {
             }
 
             List<OrganizationUser> orgUsers = orgs.stream()
-                    .map(org -> new OrganizationUser(savedUser, org))
+                    .map(org -> new OrganizationUser(user, org))
                     .toList();
 
             organizationUserRepository.saveAll(orgUsers);
@@ -94,11 +93,18 @@ public class UserService {
         }
     }
 
+    public User getUser(Long userId, String tokenEmail) {
+        User user = getUserById(userId);
+        validateOwner(user, tokenEmail);
+
+        return user;
+    }
+
+
     @Transactional
     public Long updateInfo(Long userId, UserUpdateRequest request, String tokenEmail) {
 
-        User targetUser = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+        User targetUser = getUserById(userId);
 
         validateOwner(targetUser, tokenEmail);
 
@@ -127,7 +133,7 @@ public class UserService {
 
     @Transactional
     public Long updatePassword(Long userId, UserPasswordUpdateRequest request, String tokenEmail) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+        User user = getUserById(userId);
 
         validateOwner(user, tokenEmail);
 
@@ -154,7 +160,7 @@ public class UserService {
 
     @Transactional
     public Long withdraw(Long userId, UserWithdrawRequest request, String tokenEmail) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("로그인 유저 정보를 찾을 수 없습니다."));
+        User user = getUserById(userId);
 
         validateOwner(user, tokenEmail);
 
@@ -173,5 +179,9 @@ public class UserService {
 
         em.clear();
         return userId;
+    }
+
+    private User getUserById(Long userId) {
+        return userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
     }
 }
