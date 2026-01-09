@@ -1,10 +1,13 @@
 package com.popogonry.notid.channel;
 
 import com.popogonry.notid.channel.dto.ChannelCreateRequest;
+import com.popogonry.notid.channel.dto.ChannelResponse;
+import com.popogonry.notid.channel.dto.ChannelSearchRequest;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
 import com.popogonry.notid.organization.Organization;
 import com.popogonry.notid.organization.OrganizationRepository;
+import com.popogonry.notid.organizationchannel.OrganizationChannel;
 import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
 import com.popogonry.notid.user.Gender;
 import com.popogonry.notid.user.User;
@@ -18,6 +21,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.crossstore.ChangeSetPersister;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -155,6 +162,169 @@ class ChannelServiceUnitTest {
         verify(organizationChannelRepository, never()).saveAll(any());
     }
 
+    @Test
+    @DisplayName("채널 검색 성공 - ID 검색")        
+    public void searchChannels_success_byId() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+        addOrgs();
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertChannelResponse(channelResponses);
+
+        verify(channelRepository).findById(channelId);
+    }
 
 
+    @Test
+    @DisplayName("채널 검색 성공 - 이름 검색")        
+    public void searchChannels_success_byName() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.NAME, channelName);
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelRepository.findByNameContaining(channelName, Pageable.unpaged())).willReturn(new PageImpl<>(List.of(channel)));
+
+        addOrgs();
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertChannelResponse(channelResponses);
+
+        verify(channelRepository).findByNameContaining(channelName, Pageable.unpaged());
+    }
+    
+    @Test
+    @DisplayName("채널 검색 성공 - 설명 검색")        
+    public void searchChannels_success_byDes() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.DESCRIPTION, channel.getDescription());
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelRepository.findByDescriptionContaining(channel.getDescription(), Pageable.unpaged())).willReturn(new PageImpl<>(List.of(channel)));
+
+        addOrgs();
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertChannelResponse(channelResponses);
+
+        verify(channelRepository).findByDescriptionContaining(channel.getDescription(), Pageable.unpaged());
+    }
+
+    @Test
+    @DisplayName("채널 검색 성공 - 조직 검색")        
+    public void searchChannels_success_byOrg() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ORGANIZATION, "org1");
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelRepository.findByOrganizationName("org1", Pageable.unpaged())).willReturn(new PageImpl<>(List.of(channel)));
+
+        addOrgs();
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertChannelResponse(channelResponses);
+
+        verify(channelRepository).findByOrganizationName("org1", Pageable.unpaged());
+    }
+    
+    @Test
+    @DisplayName("채널 검색 실패 - 존재하지 않는 유저")
+    public void searchChannels_fail_user_not_found() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.searchChannels(request, "wrong" + userEmail, Pageable.unpaged()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유저 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 검색 성공 - ID 검색인데 숫자가 아닌 값을 입력 (빈 결과 반환)")        
+    public void searchChannels_success_id_invalid_format() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, "notLong");
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertThat(channelResponses).isEmpty();
+
+        verify(channelRepository, never()).findById(channelId);
+    }
+    
+    @Test
+    @DisplayName("채널 검색 성공 - 존재하지 않는 ID 검색 (빈 결과 반환)")
+    public void searchChannels_success_id_not_found() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, Long.toString(channelId + 1L));
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertThat(channelResponses).isEmpty();
+    }
+
+    @Test
+    @DisplayName("채널 검색 성공 - 검색 결과 없음")
+    public void searchChannels_success_no_result() throws Exception {
+        //given
+        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.NAME, "no result");
+
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelRepository.findByNameContaining("no result", Pageable.unpaged())).willReturn(Page.empty());
+
+        //when
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+
+        //then
+        assertThat(channelResponses).isEmpty();
+    }
+
+
+    private void addOrgs() {
+        Organization org1 = Organization.builder().name("org1").build();
+        Organization org2 = Organization.builder().name("org2").build();
+
+        channel.addOrganizationChannel(new OrganizationChannel(channel, org1));
+        channel.addOrganizationChannel(new OrganizationChannel(channel, org2));
+    }
+
+
+    private void assertChannelResponse(Page<ChannelResponse> channelResponses) {
+        assertThat(channelResponses.getTotalElements()).isEqualTo(1);
+
+        ChannelResponse response = channelResponses.getContent().getFirst();
+
+        assertThat(response.getId()).isEqualTo(channelId);
+        assertThat(response.getName()).isEqualTo(channelName);
+
+        assertThat(response.getOrganizationChannels()).hasSize(2)
+                .extracting("name")
+                .containsExactlyInAnyOrder("org1", "org2");
+    }
+    
 }

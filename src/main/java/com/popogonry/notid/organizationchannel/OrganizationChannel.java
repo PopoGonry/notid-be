@@ -3,10 +3,7 @@ package com.popogonry.notid.organizationchannel;
 import com.popogonry.notid.channel.Channel;
 import com.popogonry.notid.organization.Organization;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -32,6 +29,7 @@ public class OrganizationChannel {
     @Column(name = "organization_channels_id")
     private Long id;
 
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "channels_id", nullable = false)
     private Channel channel;

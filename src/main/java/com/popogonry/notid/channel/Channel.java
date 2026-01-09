@@ -1,6 +1,7 @@
 package com.popogonry.notid.channel;
 
 
+import com.popogonry.notid.organizationchannel.OrganizationChannel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -13,6 +14,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -40,6 +43,9 @@ public class Channel {
     @Column(nullable = false)
     private ChannelStatus status = ChannelStatus.ACTIVE;
 
+    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL)
+    private List<OrganizationChannel> organizationChannels = new ArrayList<>();
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -54,6 +60,11 @@ public class Channel {
         this.name = name;
         this.description = description;
         this.joinType = (joinType == null) ? JoinType.FREE : joinType;
+    }
+
+    public void addOrganizationChannel(OrganizationChannel organizationChannel) {
+        organizationChannels.add(organizationChannel);
+        organizationChannel.setChannel(this);
     }
 
     public void inactive() {

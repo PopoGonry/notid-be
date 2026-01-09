@@ -1,6 +1,8 @@
 package com.popogonry.notid.channel;
 
 import com.popogonry.notid.channel.dto.ChannelCreateRequest;
+import com.popogonry.notid.channel.dto.ChannelResponse;
+import com.popogonry.notid.channel.dto.ChannelSearchRequest;
 import com.popogonry.notid.channeluser.ChannelGrade;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
@@ -8,15 +10,18 @@ import com.popogonry.notid.organization.Organization;
 import com.popogonry.notid.organization.OrganizationRepository;
 import com.popogonry.notid.organizationchannel.OrganizationChannel;
 import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
-import com.popogonry.notid.organizationuser.OrganizationUser;
 import com.popogonry.notid.user.User;
 import com.popogonry.notid.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -60,6 +65,37 @@ public class ChannelService {
                     .toList();
 
             organizationChannelRepository.saveAll(orgChannels);
+        }
+    }
+
+    public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, String tokenEmail, Pageable pageable) {
+        userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
+
+        String keyword = request.getKeyword();
+
+        Page<Channel> channelResponses = switch (request.getSearchType()) {
+            case ID -> searchById(keyword, pageable);
+            case NAME -> channelRepository.findByNameContaining(keyword, pageable);
+            case DESCRIPTION -> channelRepository.findByDescriptionContaining(keyword, pageable);
+            case ORGANIZATION -> channelRepository.findByOrganizationName(keyword, pageable);
+        };
+        return channelResponses.map(ChannelResponse::from);
+    }
+
+    public Page<Channel> searchById(String keyword, Pageable pageable) {
+        try {
+            Long id = Long.parseLong(keyword);
+
+            Optional<Channel> channelOptional = channelRepository.findById(id);
+
+            if (channelOptional.isPresent()) {
+                return new PageImpl<>(List.of(channelOptional.get()), pageable, 1);
+            }
+
+            return Page.empty();
+
+        } catch (NumberFormatException e) {
+            return Page.empty();
         }
     }
 
