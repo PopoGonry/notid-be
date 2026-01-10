@@ -3,6 +3,8 @@ package com.popogonry.notid.channel;
 import com.popogonry.notid.channel.dto.ChannelCreateRequest;
 import com.popogonry.notid.channel.dto.ChannelResponse;
 import com.popogonry.notid.channel.dto.ChannelSearchRequest;
+import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
+import com.popogonry.notid.channeluser.ChannelGrade;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
 import com.popogonry.notid.organization.Organization;
@@ -13,7 +15,6 @@ import com.popogonry.notid.user.Gender;
 import com.popogonry.notid.user.User;
 import com.popogonry.notid.user.UserRepository;
 import jakarta.persistence.EntityManager;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,10 +22,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -249,6 +250,8 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
 
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.empty());
+
         //when
         //then
         assertThatThrownBy(() -> channelService.searchChannels(request, "wrong" + userEmail, Pageable.unpaged()))
@@ -304,16 +307,132 @@ class ChannelServiceUnitTest {
         assertThat(channelResponses).isEmpty();
     }
 
+    @Test
+    @DisplayName("채널 수정 성공")
+    public void updateChannel_success() throws Exception {
+        //given
+        ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
 
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        addOrgs();
+
+        Organization org3 = Organization.builder().name("org3").build();
+        ReflectionTestUtils.setField(org3, "id", 3L);
+
+        given(organizationRepository.findAllById(List.of(3L))).willReturn(List.of(org3));
+
+        //when
+        channelService.updateChannel(channelId, request, userEmail);
+
+        //then
+        assertThat(channel.getDescription()).isEqualTo("newDes");
+        assertThat(channel.getJoinType()).isEqualTo(JoinType.REQUEST);
+        assertThat(channel.getOrganizationChannels()).hasSize(2)
+                .extracting("organization.name")
+                .containsExactlyInAnyOrder("org2", "org3");
+
+        verify(organizationRepository).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("채널 수정 실패 - 존재하지 않는 유저")
+    public void updateChannel_fail_channel_not_found() throws Exception {
+        //given
+        ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("채널 수정 실패 - 존재하지 않는 유저")
+    public void updateChannel_fail_user_not_found() throws Exception {
+        //given
+        ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("유저 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 수정 실패 - 유저 채널 미가입")
+    public void updateChannel_fail_user_not_in_channel() throws Exception {
+        //given
+        ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 유저입니다.");
+    }
+
+    @Test
+    @DisplayName("채널 수정 실패 - 유저 권한 없음")
+    public void updateChannel_fail_user_access_denied() throws Exception {
+        //given
+        ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MANAGER)));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("관리자 권한이 필요합니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 수정 실패 - 존재하는 않는 조직")
+    public void updateChannel_fail_org_id_not_found() throws Exception {
+        //given
+        ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(5L, 6L));
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        addOrgs();
+
+        Organization org3 = Organization.builder().name("org3").build();
+        ReflectionTestUtils.setField(org3, "id", 3L);
+
+        given(organizationRepository.findAllById(any())).willReturn(List.of(org3));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("존재하지 않는 조직 ID가 포함되어 있습니다.");
+    }
+    
     private void addOrgs() {
         Organization org1 = Organization.builder().name("org1").build();
         Organization org2 = Organization.builder().name("org2").build();
 
+        ReflectionTestUtils.setField(org1, "id", 1L);
+        ReflectionTestUtils.setField(org2, "id", 2L);
+
         channel.addOrganizationChannel(new OrganizationChannel(channel, org1));
         channel.addOrganizationChannel(new OrganizationChannel(channel, org2));
     }
-
-
+    
     private void assertChannelResponse(Page<ChannelResponse> channelResponses) {
         assertThat(channelResponses.getTotalElements()).isEqualTo(1);
 
@@ -326,5 +445,6 @@ class ChannelServiceUnitTest {
                 .extracting("name")
                 .containsExactlyInAnyOrder("org1", "org2");
     }
-    
+
+
 }

@@ -3,6 +3,7 @@ package com.popogonry.notid.channel;
 import com.popogonry.notid.channel.dto.ChannelCreateRequest;
 import com.popogonry.notid.channel.dto.ChannelResponse;
 import com.popogonry.notid.channel.dto.ChannelSearchRequest;
+import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,5 +39,15 @@ public class ChannelController {
     ) {
         Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userDetails.getUsername(), pageable);
         return ResponseEntity.ok(channelResponses);
+    }
+
+    @PatchMapping("/{channelId}")
+    public ResponseEntity<Long> updateChannel(
+            @PathVariable Long channelId,
+            @RequestBody @Valid ChannelUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long updatedChannelId = channelService.updateChannel(channelId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedChannelId);
     }
 }

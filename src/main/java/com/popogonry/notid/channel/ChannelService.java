@@ -3,6 +3,7 @@ package com.popogonry.notid.channel;
 import com.popogonry.notid.channel.dto.ChannelCreateRequest;
 import com.popogonry.notid.channel.dto.ChannelResponse;
 import com.popogonry.notid.channel.dto.ChannelSearchRequest;
+import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
 import com.popogonry.notid.channeluser.ChannelGrade;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +40,7 @@ public class ChannelService {
     @Transactional
     public Long createChannel(ChannelCreateRequest request, String tokenEmail) {
 
-        User user = userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
+        User user = getUser(tokenEmail);
 
         Channel channel = channelRepository.save(request.toEntity());
 
@@ -69,7 +71,7 @@ public class ChannelService {
     }
 
     public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, String tokenEmail, Pageable pageable) {
-        userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
+        getUser(tokenEmail);
 
         String keyword = request.getKeyword();
 
@@ -99,6 +101,62 @@ public class ChannelService {
         }
     }
 
+    @Transactional
+    public Long updateChannel(Long channelId, ChannelUpdateRequest request, String tokenEmail) {
+        Channel channel = channelRepository.findById(channelId).orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
+        User user = getUser(tokenEmail);
+
+        ChannelUser channelUser = channelUserRepository.findByChannelIdAndUserId(channel.getId(), user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("채널에 가입되지 않은 유저입니다."));
+
+        if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
+            throw new AccessDeniedException("관리자 권한이 필요합니다.");
+        }
+
+        channel.updateChannel(request.getDescription(), request.getJoinType());
+
+        updateOrganizationRelations(request.getOrganizationIds(), channel);
+
+        return channel.getId();
+    }
+
+    private void updateOrganizationRelations(List<Long> requestOrgIds, Channel channel) {
+        List<OrganizationChannel> currentLinks = channel.getOrganizationChannels();
+
+        // 기존 목록 ID 추출
+        List<Long> currentOrgIds = currentLinks.stream()
+                .map(link -> link.getOrganization().getId())
+                .toList();
+
+        // 기존 목록에서 요청 목록 제외 == 제거할 것.
+        List<OrganizationChannel> toRemove = currentLinks.stream()
+                .filter(link -> !requestOrgIds.contains(link.getOrganization().getId()))
+                .toList();
+
+        toRemove.forEach(channel::removeOrganizationChannel);
+
+        // 요청 목록에서 기존 목록 제외 == 추가할 것.
+        List<Long> toAdd = requestOrgIds.stream()
+                .filter(id -> !currentOrgIds.contains(id))
+                .toList();
+
+        if (!toAdd.isEmpty()) {
+            List<Organization> newOrgs = organizationRepository.findAllById(toAdd);
+
+            if (newOrgs.size() != toAdd.size()) {
+                throw new IllegalArgumentException("존재하지 않는 조직 ID가 포함되어 있습니다.");
+            }
+
+            for (Organization org : newOrgs) {
+                channel.addOrganizationChannel(new OrganizationChannel(channel, org));
+            }
+        }
+    }
+
+
+    private User getUser(String tokenEmail) {
+        return userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
+    }
 
 }
 

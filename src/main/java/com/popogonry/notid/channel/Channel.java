@@ -4,7 +4,6 @@ package com.popogonry.notid.channel;
 import com.popogonry.notid.organizationchannel.OrganizationChannel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -43,7 +42,7 @@ public class Channel {
     @Column(nullable = false)
     private ChannelStatus status = ChannelStatus.ACTIVE;
 
-    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "channel", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrganizationChannel> organizationChannels = new ArrayList<>();
 
     @CreatedDate
@@ -65,6 +64,16 @@ public class Channel {
     public void addOrganizationChannel(OrganizationChannel organizationChannel) {
         organizationChannels.add(organizationChannel);
         organizationChannel.setChannel(this);
+    }
+
+    public void removeOrganizationChannel(OrganizationChannel organizationChannel) {
+        organizationChannels.remove(organizationChannel);
+        organizationChannel.setChannel(null);
+    }
+
+    public void updateChannel(String description, JoinType joinType) {
+        this.description = description;
+        this.joinType = joinType;
     }
 
     public void inactive() {

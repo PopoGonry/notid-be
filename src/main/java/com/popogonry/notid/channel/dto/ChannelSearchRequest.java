@@ -2,7 +2,6 @@ package com.popogonry.notid.channel.dto;
 
 import com.popogonry.notid.channel.SearchType;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
