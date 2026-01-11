@@ -1,9 +1,7 @@
 package com.popogonry.notid.channel;
 
-import com.popogonry.notid.channel.dto.ChannelCreateRequest;
-import com.popogonry.notid.channel.dto.ChannelResponse;
-import com.popogonry.notid.channel.dto.ChannelSearchRequest;
-import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
+import com.popogonry.notid.channel.dto.*;
+import com.popogonry.notid.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -71,6 +69,23 @@ public class ChannelController {
     public ResponseEntity<Page<ChannelResponse>> getChannels(
             @PageableDefault(size = 10) Pageable pageable
     ) {
-        return  ResponseEntity.ok(channelService.getChannels(pageable));
+        return ResponseEntity.ok(channelService.getChannels(pageable));
+    }
+
+    @GetMapping("/{channelId}")
+    public ResponseEntity<ChannelResponse> getChannel(
+            @PathVariable Long channelId
+    ) {
+        Channel channel = channelService.getChannel(channelId);
+        return ResponseEntity.ok(ChannelResponse.from(channel));
+    }
+
+    @GetMapping("/{channelId}")
+    public ResponseEntity<Page<ChannelMemberResponse>> getMembers(
+            @PathVariable Long channelId,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<ChannelMemberResponse> members = channelService.getMembers(channelId, pageable);
+        return ResponseEntity.ok(members);
     }
 }

@@ -1,9 +1,6 @@
 package com.popogonry.notid.channel;
 
-import com.popogonry.notid.channel.dto.ChannelCreateRequest;
-import com.popogonry.notid.channel.dto.ChannelResponse;
-import com.popogonry.notid.channel.dto.ChannelSearchRequest;
-import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
+import com.popogonry.notid.channel.dto.*;
 import com.popogonry.notid.channeluser.ChannelGrade;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
@@ -13,6 +10,7 @@ import com.popogonry.notid.organizationchannel.OrganizationChannel;
 import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
 import com.popogonry.notid.user.User;
 import com.popogonry.notid.user.UserRepository;
+import com.popogonry.notid.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -226,12 +224,16 @@ public class ChannelService {
         return channelRepository.findAll(pageable).map(ChannelResponse::from);
     }
 
+    public Page<ChannelMemberResponse> getMembers(Long channelId, Pageable pageable) {
+        return channelUserRepository.findAllByChannelId(channelId, pageable).map(ChannelMemberResponse::from);
+    }
+
     private ChannelUser getChannelUser(Channel channel, User user) {
         return channelUserRepository.findByChannelIdAndUserId(channel.getId(), user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("채널에 가입되지 않은 사용자입니다."));
     }
 
-    private Channel getChannel(Long channelId) {
+    public Channel getChannel(Long channelId) {
         return channelRepository.findById(channelId)
                 .orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
     }
@@ -240,6 +242,5 @@ public class ChannelService {
         return userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
-
 }
 
