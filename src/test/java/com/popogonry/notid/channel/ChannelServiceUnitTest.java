@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -395,7 +396,7 @@ class ChannelServiceUnitTest {
         //then
         assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("관리자 권한이 필요합니다.");
+                .hasMessage("소유자 권한이 필요합니다.");
     }
     
     @Test
@@ -467,7 +468,7 @@ class ChannelServiceUnitTest {
         //then
         assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("이미 삭제된 채널입니다.");
+                .hasMessage("삭제된 채널입니다.");
     }
 
     @Test
@@ -513,7 +514,224 @@ class ChannelServiceUnitTest {
         //then
         assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("관리자 권한이 필요합니다.");
+                .hasMessage("소유자 권한이 필요합니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 가입 성공 - 자유 가입")        
+    public void joinChannel_success_free() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        ReflectionTestUtils.setField(channel, "joinType", JoinType.FREE);
+
+        //when
+        Long joinedChannelId = channelService.joinChannel(channelId, userEmail);
+
+        //then
+        assertThat(joinedChannelId).isEqualTo(channelId);
+
+        ArgumentCaptor<ChannelUser> captor = ArgumentCaptor.forClass(ChannelUser.class);
+
+        verify(channelUserRepository, times(1)).save(captor.capture());
+
+        ChannelUser savedChannelUser = captor.getValue();
+
+        assertThat(savedChannelUser.getChannel()).isEqualTo(channel);
+        assertThat(savedChannelUser.getUser()).isEqualTo(user);
+        assertThat(savedChannelUser.getChannelGrade()).isEqualTo(ChannelGrade.MEMBER);
+    }
+    
+    @Test
+    @DisplayName("채널 가입 성공 - 가입 신청")        
+    public void joinChannel_success_request() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        ReflectionTestUtils.setField(channel, "joinType", JoinType.REQUEST);
+
+        //when
+        Long joinedChannelId = channelService.joinChannel(channelId, userEmail);
+
+        //then
+        assertThat(joinedChannelId).isEqualTo(channelId);
+
+        ArgumentCaptor<ChannelUser> captor = ArgumentCaptor.forClass(ChannelUser.class);
+
+        verify(channelUserRepository, times(1)).save(captor.capture());
+
+        ChannelUser savedChannelUser = captor.getValue();
+
+        assertThat(savedChannelUser.getChannel()).isEqualTo(channel);
+        assertThat(savedChannelUser.getUser()).isEqualTo(user);
+        assertThat(savedChannelUser.getChannelGrade()).isEqualTo(ChannelGrade.WAITING);
+    }
+    
+    @Test
+    @DisplayName("채널 가입 실패 - 존재하지 않는 채널")
+    public void joinChannel_fail_channel_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.joinChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 가입 실패 - 비활성화된 채널")
+    public void joinChannel_fail_inactive_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.INACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.joinChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("삭제된 채널입니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 가입 실패 - 존재하지 않는 사용자")
+    public void joinChannel_fail_user_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.empty());
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.joinChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+
+    
+    @Test
+    @DisplayName("채널 가입 실패 - 이미 가입되어 있는 사용자")
+    public void joinChannel_fail_already_user_in_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.joinChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("이미 가입되었거나 가입 승인 대기 중입니다.");
+    }
+
+    @Test
+    @DisplayName("채널 탈퇴 성공")
+    public void leaveChannel_success() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        Long leavedChannelId = channelService.leaveChannel(channelId, userEmail);
+
+        //then
+        assertThat(leavedChannelId).isEqualTo(channelId);
+
+        ArgumentCaptor<ChannelUser> captor = ArgumentCaptor.forClass(ChannelUser.class);
+
+        verify(channelUserRepository, times(1)).delete(captor.capture());
+    }
+
+    @Test
+    @DisplayName("채널 탈퇴 실패 - 존재하지 않는 채널")
+    public void leaveChannel_fail_channel_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.leaveChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 탈퇴 실패 - 비활성화된 채널")
+    public void leaveChannel_fail_inactive_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.INACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.leaveChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("삭제된 채널입니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 탈퇴 실패 - 존재하지 않는 사용자")
+    public void leaveChannel_fail_user_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.empty());
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.leaveChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("채널 탈퇴 실패 - 사용자 채널 미가입")
+    public void leaveChannel_fail_user_not_in_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.leaveChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
+    }
+
+    @Test
+    @DisplayName("채널 탈퇴 실패 - 소유자 탈퇴")
+    public void leaveChannel_fail_admin_user() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.leaveChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("소유자는 채널을 탈퇴할 수 없습니다. 권한을 위임하거나 채널을 삭제하세요.");
     }
     
     private void addOrgs() {

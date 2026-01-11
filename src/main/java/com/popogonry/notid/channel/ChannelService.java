@@ -14,6 +14,7 @@ import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
 import com.popogonry.notid.user.User;
 import com.popogonry.notid.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -35,9 +36,9 @@ public class ChannelService {
     private final OrganizationChannelRepository organizationChannelRepository;
 
     @Transactional
-    public Long createChannel(ChannelCreateRequest request, String tokenEmail) {
+    public Long createChannel(ChannelCreateRequest request, String userEmail) {
 
-        User user = getUser(tokenEmail);
+        User user = getUser(userEmail);
 
         Channel channel = channelRepository.save(request.toEntity());
 
@@ -99,14 +100,14 @@ public class ChannelService {
     }
 
     @Transactional
-    public Long updateChannel(Long channelId, ChannelUpdateRequest request, String tokenEmail) {
+    public Long updateChannel(Long channelId, ChannelUpdateRequest request, String userEmail) {
         Channel channel = getChannel(channelId);
-        User user = getUser(tokenEmail);
+        User user = getUser(userEmail);
 
         ChannelUser channelUser = getChannelUser(channel, user);
 
         if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
-            throw new AccessDeniedException("관리자 권한이 필요합니다.");
+            throw new AccessDeniedException("소유자 권한이 필요합니다.");
         }
 
         channel.updateChannel(request.getDescription(), request.getJoinType());
@@ -151,22 +152,68 @@ public class ChannelService {
     }
 
     @Transactional
-    public Long deleteChannel(Long channelId, String tokenEmail) {
+    public Long deleteChannel(Long channelId, String userEmail) {
         Channel channel = getChannel(channelId);
 
         if (channel.getStatus() == ChannelStatus.INACTIVE) {
-            throw new IllegalArgumentException("이미 삭제된 채널입니다.");
+            throw new IllegalArgumentException("삭제된 채널입니다.");
         }
 
-        User user = getUser(tokenEmail);
+        User user = getUser(userEmail);
 
         ChannelUser channelUser = getChannelUser(channel, user);
 
         if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
-            throw new AccessDeniedException("관리자 권한이 필요합니다.");
+            throw new AccessDeniedException("소유자 권한이 필요합니다.");
         }
 
         channel.inactive();
+        return channel.getId();
+    }
+
+    @Transactional
+    public Long joinChannel(Long channelId, String userEmail) {
+        Channel channel = getChannel(channelId);
+
+        if (channel.getStatus() == ChannelStatus.INACTIVE) {
+            throw new IllegalArgumentException("삭제된 채널입니다.");
+        }
+
+        User user = getUser(userEmail);
+
+        if (channelUserRepository.findByChannelIdAndUserId(channelId, user.getId()).isPresent()) {
+            throw new IllegalArgumentException("이미 가입되었거나 가입 승인 대기 중입니다.");
+        }
+
+        ChannelGrade grade = ChannelGrade.MEMBER;
+
+        if (channel.getJoinType() == JoinType.REQUEST) {
+            grade = ChannelGrade.WAITING;
+        }
+
+        channelUserRepository.save(new ChannelUser(channel, user, grade));
+
+        return channel.getId();
+    }
+
+    @Transactional
+    public Long leaveChannel(Long channelId, String userEmail) {
+        Channel channel = getChannel(channelId);
+
+        if (channel.getStatus() == ChannelStatus.INACTIVE) {
+            throw new IllegalArgumentException("삭제된 채널입니다.");
+        }
+
+        User user = getUser(userEmail);
+
+        ChannelUser channelUser = getChannelUser(channel, user);
+
+        if (channelUser.getChannelGrade() == ChannelGrade.ADMIN) {
+            throw new IllegalArgumentException("소유자는 채널을 탈퇴할 수 없습니다. 권한을 위임하거나 채널을 삭제하세요.");
+        }
+
+        channelUserRepository.delete(channelUser);
+
         return channel.getId();
     }
 
@@ -180,8 +227,8 @@ public class ChannelService {
                 .orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
     }
 
-    private User getUser(String tokenEmail) {
-        return userRepository.findByEmail(tokenEmail)
+    private User getUser(String userEmail) {
+        return userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
 
