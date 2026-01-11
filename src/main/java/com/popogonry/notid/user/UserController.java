@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,9 +31,16 @@ public class UserController {
     }
 
     @PostMapping("/signin")
-    public ResponseEntity<UserSignInResponse> signin(@RequestBody @Valid UserSignInRequest request) {
+    public ResponseEntity<UserSignInResponse> signIn(@RequestBody @Valid UserSignInRequest request) {
         String token = userService.signIn(request);
         return ResponseEntity.ok(new UserSignInResponse(token));
+    }
+
+    @PostMapping("/signout")
+    public ResponseEntity<Void> signOut() {
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{userId}")
