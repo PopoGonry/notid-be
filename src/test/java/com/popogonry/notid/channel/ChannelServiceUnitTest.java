@@ -245,7 +245,7 @@ class ChannelServiceUnitTest {
     }
     
     @Test
-    @DisplayName("채널 검색 실패 - 존재하지 않는 유저")
+    @DisplayName("채널 검색 실패 - 존재하지 않는 사용자")
     public void searchChannels_fail_user_not_found() throws Exception {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
@@ -256,7 +256,7 @@ class ChannelServiceUnitTest {
         //then
         assertThatThrownBy(() -> channelService.searchChannels(request, "wrong" + userEmail, Pageable.unpaged()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("유저 정보를 찾을 수 없습니다.");
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
     }
     
     @Test
@@ -338,7 +338,7 @@ class ChannelServiceUnitTest {
     }
 
     @Test
-    @DisplayName("채널 수정 실패 - 존재하지 않는 유저")
+    @DisplayName("채널 수정 실패 - 존재하지 않는 사용자")
     public void updateChannel_fail_channel_not_found() throws Exception {
         //given
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
@@ -351,7 +351,7 @@ class ChannelServiceUnitTest {
     }
 
     @Test
-    @DisplayName("채널 수정 실패 - 존재하지 않는 유저")
+    @DisplayName("채널 수정 실패 - 존재하지 않는 사용자")
     public void updateChannel_fail_user_not_found() throws Exception {
         //given
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
@@ -362,11 +362,11 @@ class ChannelServiceUnitTest {
         //then
         assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("유저 정보를 찾을 수 없습니다.");
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
     }
     
     @Test
-    @DisplayName("채널 수정 실패 - 유저 채널 미가입")
+    @DisplayName("채널 수정 실패 - 사용자 채널 미가입")
     public void updateChannel_fail_user_not_in_channel() throws Exception {
         //given
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
@@ -378,11 +378,11 @@ class ChannelServiceUnitTest {
         //then
         assertThatThrownBy(() -> channelService.updateChannel(channelId, request, userEmail))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("채널에 가입되지 않은 유저입니다.");
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
     }
 
     @Test
-    @DisplayName("채널 수정 실패 - 유저 권한 없음")
+    @DisplayName("채널 수정 실패 - 사용자 권한 없음")
     public void updateChannel_fail_user_access_denied() throws Exception {
         //given
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
@@ -421,6 +421,100 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("존재하지 않는 조직 ID가 포함되어 있습니다.");
     }
+
+    @Test
+    @DisplayName("채널 삭제 성공")
+    public void deleteChannel_success() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        addOrgs();
+
+        //when
+        Long deleteChannelId = channelService.deleteChannel(channelId, userEmail);
+
+        //then
+        assertThat(deleteChannelId).isEqualTo(channelId);
+        assertThat(channel.getOrganizationChannels().size()).isEqualTo(0);
+        assertThat(channel.getStatus()).isEqualTo(ChannelStatus.INACTIVE);
+    }
+
+    @Test
+    @DisplayName("채널 삭제 실패 - 존재하지 않는 채널")
+    public void deleteChannel_fail_not_found_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("채널 삭제 실패 - 이미 비활성화된 채널")
+    public void deleteChannel_fail_already_inactive_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.INACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("이미 삭제된 채널입니다.");
+    }
+
+    @Test
+    @DisplayName("채널 삭제 실패 - 존재하지 않는 사용자")
+    public void deleteChannel_fail_not_found_user() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("채널 삭제 실패 - 사용자 채널 미가입")
+    public void deleteChannel_fail_user_not_in_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.empty());
+
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
+    }
+
+    @Test
+    @DisplayName("채널 삭제 실패 - 사용자 권한 없음")
+    public void deleteChannel_fail_user_access_denied() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
+
+        //when
+
+        //then
+        assertThatThrownBy(() -> channelService.deleteChannel(channelId, userEmail))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("관리자 권한이 필요합니다.");
+    }
     
     private void addOrgs() {
         Organization org1 = Organization.builder().name("org1").build();
@@ -445,6 +539,4 @@ class ChannelServiceUnitTest {
                 .extracting("name")
                 .containsExactlyInAnyOrder("org1", "org2");
     }
-
-
 }

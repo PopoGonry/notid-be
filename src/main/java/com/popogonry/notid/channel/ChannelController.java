@@ -50,4 +50,13 @@ public class ChannelController {
         Long updatedChannelId = channelService.updateChannel(channelId, request, userDetails.getUsername());
         return ResponseEntity.ok(updatedChannelId);
     }
+
+    @DeleteMapping("/{channelId}")
+    public ResponseEntity<Long> deleteChannel(
+            @PathVariable Long channelId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long deletedChannelId = channelService.deleteChannel(channelId, userDetails.getUsername());
+        return ResponseEntity.ok(deletedChannelId);
+    }
 }

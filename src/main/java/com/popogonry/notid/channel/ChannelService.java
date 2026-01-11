@@ -21,10 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -103,11 +100,10 @@ public class ChannelService {
 
     @Transactional
     public Long updateChannel(Long channelId, ChannelUpdateRequest request, String tokenEmail) {
-        Channel channel = channelRepository.findById(channelId).orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
+        Channel channel = getChannel(channelId);
         User user = getUser(tokenEmail);
 
-        ChannelUser channelUser = channelUserRepository.findByChannelIdAndUserId(channel.getId(), user.getId())
-                .orElseThrow(() -> new IllegalArgumentException("채널에 가입되지 않은 유저입니다."));
+        ChannelUser channelUser = getChannelUser(channel, user);
 
         if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
             throw new AccessDeniedException("관리자 권한이 필요합니다.");
@@ -119,6 +115,7 @@ public class ChannelService {
 
         return channel.getId();
     }
+
 
     private void updateOrganizationRelations(List<Long> requestOrgIds, Channel channel) {
         List<OrganizationChannel> currentLinks = channel.getOrganizationChannels();
@@ -153,9 +150,39 @@ public class ChannelService {
         }
     }
 
+    @Transactional
+    public Long deleteChannel(Long channelId, String tokenEmail) {
+        Channel channel = getChannel(channelId);
+
+        if (channel.getStatus() == ChannelStatus.INACTIVE) {
+            throw new IllegalArgumentException("이미 삭제된 채널입니다.");
+        }
+
+        User user = getUser(tokenEmail);
+
+        ChannelUser channelUser = getChannelUser(channel, user);
+
+        if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
+            throw new AccessDeniedException("관리자 권한이 필요합니다.");
+        }
+
+        channel.inactive();
+        return channel.getId();
+    }
+
+    private ChannelUser getChannelUser(Channel channel, User user) {
+        return channelUserRepository.findByChannelIdAndUserId(channel.getId(), user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("채널에 가입되지 않은 사용자입니다."));
+    }
+
+    private Channel getChannel(Long channelId) {
+        return channelRepository.findById(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
+    }
 
     private User getUser(String tokenEmail) {
-        return userRepository.findByEmail(tokenEmail).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
+        return userRepository.findByEmail(tokenEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
 
 }

@@ -78,5 +78,6 @@ public class Channel {
 
     public void inactive() {
         this.status = ChannelStatus.INACTIVE;
+        this.organizationChannels.clear();
     }
 }
