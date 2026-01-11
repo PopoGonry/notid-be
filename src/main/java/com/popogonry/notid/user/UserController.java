@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final UserRepository userRepository;
 
     @PostMapping("/signup")
     public ResponseEntity<Long> signup(@RequestBody @Valid UserSignUpRequest request) {
@@ -95,7 +94,14 @@ public class UserController {
         return ResponseEntity.ok(deletedUserId);
     }
 
-
+    @GetMapping("/check-duplicate")
+    public ResponseEntity<Boolean> checkDuplicate(
+            @RequestParam String type,
+            @RequestParam String value
+    ) {
+        boolean isDuplicate = userService.validateDuplicate(type, value);
+        return ResponseEntity.ok(isDuplicate);
+    }
 
     @GetMapping("/test")
     public String test() {
