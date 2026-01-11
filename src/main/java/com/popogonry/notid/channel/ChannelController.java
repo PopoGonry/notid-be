@@ -59,4 +59,18 @@ public class ChannelController {
         Long deletedChannelId = channelService.deleteChannel(channelId, userDetails.getUsername());
         return ResponseEntity.ok(deletedChannelId);
     }
+
+    @GetMapping
+    public ResponseEntity<Page<ChannelResponse>> getChannelsOrderByMemberCount(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(channelService.getChannelsOrderByMemberCount(pageable));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<ChannelResponse>> getChannels(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return  ResponseEntity.ok(channelService.getChannels(pageable));
+    }
 }

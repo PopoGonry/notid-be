@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -69,8 +70,6 @@ public class ChannelService {
     }
 
     public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, String tokenEmail, Pageable pageable) {
-        getUser(tokenEmail);
-
         String keyword = request.getKeyword();
 
         Page<Channel> channelResponses = switch (request.getSearchType()) {
@@ -215,6 +214,16 @@ public class ChannelService {
         channelUserRepository.delete(channelUser);
 
         return channel.getId();
+    }
+
+    public Page<ChannelResponse> getChannelsOrderByMemberCount(Pageable pageable) {
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+
+        return channelRepository.findAllOrderByMemberCountDesc(pageRequest).map(ChannelResponse::from);
+    }
+
+    public Page<ChannelResponse> getChannels(Pageable pageable) {
+        return channelRepository.findAll(pageable).map(ChannelResponse::from);
     }
 
     private ChannelUser getChannelUser(Channel channel, User user) {
