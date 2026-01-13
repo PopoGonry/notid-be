@@ -67,7 +67,7 @@ public class ChannelService {
         }
     }
 
-    public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, String tokenEmail, Pageable pageable) {
+    public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, Pageable pageable) {
         String keyword = request.getKeyword();
 
         Page<Channel> channelResponses = switch (request.getSearchType()) {
@@ -214,6 +214,34 @@ public class ChannelService {
         return channel.getId();
     }
 
+    @Transactional
+    public Long kickMember(Long channelId, Long targetUserId, String userEmail) {
+        Channel channel = getChannel(channelId);
+
+        if (channel.getStatus() == ChannelStatus.INACTIVE) {
+            throw new IllegalArgumentException("삭제된 채널입니다.");
+        }
+
+        User user = getUser(userEmail);
+        ChannelUser channelUser = getChannelUser(channel, user);
+
+        if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
+            throw new AccessDeniedException("소유자 권한이 필요합니다.");
+        }
+
+        User targetUser = getUser(targetUserId);
+        ChannelUser targetChannelUser = getChannelUser(channel, targetUser);
+
+        if (targetChannelUser.getChannelGrade() == ChannelGrade.ADMIN) {
+            throw new IllegalArgumentException("소유자를 채널에서 강퇴할 수 없습니다.");
+        }
+
+        channelUserRepository.delete(targetChannelUser);
+
+        return targetUser.getId();
+    }
+
+
     public Page<ChannelResponse> getChannelsOrderByMemberCount(Pageable pageable) {
         PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
 
@@ -240,6 +268,11 @@ public class ChannelService {
 
     private User getUser(String userEmail) {
         return userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
 }

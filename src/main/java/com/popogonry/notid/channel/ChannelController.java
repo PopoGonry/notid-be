@@ -1,7 +1,6 @@
 package com.popogonry.notid.channel;
 
 import com.popogonry.notid.channel.dto.*;
-import com.popogonry.notid.user.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,10 +31,9 @@ public class ChannelController {
     @GetMapping("/search")
     public ResponseEntity<Page<ChannelResponse>> searchChannels(
             @ModelAttribute @Valid ChannelSearchRequest request,
-            @AuthenticationPrincipal UserDetails userDetails,
             @PageableDefault(size = 10) Pageable pageable
     ) {
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userDetails.getUsername(), pageable);
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, pageable);
         return ResponseEntity.ok(channelResponses);
     }
 
@@ -56,6 +54,16 @@ public class ChannelController {
     ) {
         Long deletedChannelId = channelService.deleteChannel(channelId, userDetails.getUsername());
         return ResponseEntity.ok(deletedChannelId);
+    }
+
+    @DeleteMapping("/{channelId}/members/{targetUserId}")
+    public ResponseEntity<Long> kickMember(
+            @PathVariable Long channelId,
+            @PathVariable Long targetUserId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long kickedUserId = channelService.kickMember(channelId, targetUserId, userDetails.getUsername());
+        return ResponseEntity.ok(kickedUserId);
     }
 
     @GetMapping
@@ -88,4 +96,5 @@ public class ChannelController {
         Page<ChannelMemberResponse> members = channelService.getMembers(channelId, pageable);
         return ResponseEntity.ok(members);
     }
+
 }

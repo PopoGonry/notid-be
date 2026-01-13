@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class ChannelMemberResponse {
+    private Long userId;
+
     private String email;
 
     private String name;
@@ -30,6 +32,7 @@ public class ChannelMemberResponse {
 
     public static ChannelMemberResponse from(ChannelUser channelUser) {
         return ChannelMemberResponse.builder()
+                .userId(channelUser.getUser().getId())
                 .email(channelUser.getUser().getEmail())
                 .name(channelUser.getUser().getName())
                 .gender(channelUser.getUser().getGender())

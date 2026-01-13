@@ -67,9 +67,14 @@ class ChannelServiceUnitTest {
     Long userId;
     String userEmail;
 
+    User user2;
+    Long userId2;
+    String userEmail2;
+
     Channel channel;
     Long channelId;
     String channelName;
+
 
     @BeforeEach
     void setUp() {
@@ -85,6 +90,19 @@ class ChannelServiceUnitTest {
                 .build();
 
         ReflectionTestUtils.setField(user, "id", userId);
+
+        userId2 = 2L;
+        userEmail2 = "test2@gmail.com";
+
+        user2 = User.builder()
+                .email(userEmail2)
+                .password("encodedPassword")
+                .name("name2")
+                .gender(Gender.ETC)
+                .phone("010-2222-2222")
+                .build();
+
+        ReflectionTestUtils.setField(user2, "id", userId2);
 
         channelId = 100L;
         channelName = "channelName";
@@ -165,7 +183,7 @@ class ChannelServiceUnitTest {
     }
 
     @Test
-    @DisplayName("채널 검색 성공 - ID 검색")        
+    @DisplayName("채널 검색 성공 - ID 검색")
     public void searchChannels_success_byId() throws Exception {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
@@ -176,7 +194,7 @@ class ChannelServiceUnitTest {
         addOrgs();
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertChannelResponse(channelResponses);
@@ -186,7 +204,7 @@ class ChannelServiceUnitTest {
 
 
     @Test
-    @DisplayName("채널 검색 성공 - 이름 검색")        
+    @DisplayName("채널 검색 성공 - 이름 검색")
     public void searchChannels_success_byName() throws Exception {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.NAME, channelName);
@@ -197,16 +215,16 @@ class ChannelServiceUnitTest {
         addOrgs();
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertChannelResponse(channelResponses);
 
         verify(channelRepository).findByNameContaining(channelName, Pageable.unpaged());
     }
-    
+
     @Test
-    @DisplayName("채널 검색 성공 - 설명 검색")        
+    @DisplayName("채널 검색 성공 - 설명 검색")
     public void searchChannels_success_byDes() throws Exception {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.DESCRIPTION, channel.getDescription());
@@ -217,7 +235,7 @@ class ChannelServiceUnitTest {
         addOrgs();
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertChannelResponse(channelResponses);
@@ -226,7 +244,7 @@ class ChannelServiceUnitTest {
     }
 
     @Test
-    @DisplayName("채널 검색 성공 - 조직 검색")        
+    @DisplayName("채널 검색 성공 - 조직 검색")
     public void searchChannels_success_byOrg() throws Exception {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ORGANIZATION, "org1");
@@ -237,31 +255,16 @@ class ChannelServiceUnitTest {
         addOrgs();
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertChannelResponse(channelResponses);
 
         verify(channelRepository).findByOrganizationName("org1", Pageable.unpaged());
     }
-    
-    @Test
-    @DisplayName("채널 검색 실패 - 존재하지 않는 사용자")
-    public void searchChannels_fail_user_not_found() throws Exception {
-        //given
-        ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.empty());
-
-        //when
-        //then
-        assertThatThrownBy(() -> channelService.searchChannels(request, "wrong" + userEmail, Pageable.unpaged()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("사용자 정보를 찾을 수 없습니다.");
-    }
-    
     @Test
-    @DisplayName("채널 검색 성공 - ID 검색인데 숫자가 아닌 값을 입력 (빈 결과 반환)")        
+    @DisplayName("채널 검색 성공 - ID 검색인데 숫자가 아닌 값을 입력 (빈 결과 반환)")
     public void searchChannels_success_id_invalid_format() throws Exception {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, "notLong");
@@ -269,14 +272,14 @@ class ChannelServiceUnitTest {
         given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertThat(channelResponses).isEmpty();
 
         verify(channelRepository, never()).findById(channelId);
     }
-    
+
     @Test
     @DisplayName("채널 검색 성공 - 존재하지 않는 ID 검색 (빈 결과 반환)")
     public void searchChannels_success_id_not_found() throws Exception {
@@ -286,7 +289,7 @@ class ChannelServiceUnitTest {
         given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertThat(channelResponses).isEmpty();
@@ -302,7 +305,7 @@ class ChannelServiceUnitTest {
         given(channelRepository.findByNameContaining("no result", Pageable.unpaged())).willReturn(Page.empty());
 
         //when
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userEmail, Pageable.unpaged());
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
 
         //then
         assertThat(channelResponses).isEmpty();
@@ -365,7 +368,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("사용자 정보를 찾을 수 없습니다.");
     }
-    
+
     @Test
     @DisplayName("채널 수정 실패 - 사용자 채널 미가입")
     public void updateChannel_fail_user_not_in_channel() throws Exception {
@@ -398,7 +401,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("소유자 권한이 필요합니다.");
     }
-    
+
     @Test
     @DisplayName("채널 수정 실패 - 존재하는 않는 조직")
     public void updateChannel_fail_org_id_not_found() throws Exception {
@@ -516,9 +519,9 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("소유자 권한이 필요합니다.");
     }
-    
+
     @Test
-    @DisplayName("채널 가입 성공 - 자유 가입")        
+    @DisplayName("채널 가입 성공 - 자유 가입")
     public void joinChannel_success_free() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
@@ -544,9 +547,9 @@ class ChannelServiceUnitTest {
         assertThat(savedChannelUser.getUser()).isEqualTo(user);
         assertThat(savedChannelUser.getChannelGrade()).isEqualTo(ChannelGrade.MEMBER);
     }
-    
+
     @Test
-    @DisplayName("채널 가입 성공 - 가입 신청")        
+    @DisplayName("채널 가입 성공 - 가입 신청")
     public void joinChannel_success_request() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
@@ -572,7 +575,7 @@ class ChannelServiceUnitTest {
         assertThat(savedChannelUser.getUser()).isEqualTo(user);
         assertThat(savedChannelUser.getChannelGrade()).isEqualTo(ChannelGrade.WAITING);
     }
-    
+
     @Test
     @DisplayName("채널 가입 실패 - 존재하지 않는 채널")
     public void joinChannel_fail_channel_not_found() throws Exception {
@@ -585,7 +588,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("채널 정보를 찾을 수 없습니다.");
     }
-    
+
     @Test
     @DisplayName("채널 가입 실패 - 비활성화된 채널")
     public void joinChannel_fail_inactive_channel() throws Exception {
@@ -600,7 +603,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("삭제된 채널입니다.");
     }
-    
+
     @Test
     @DisplayName("채널 가입 실패 - 존재하지 않는 사용자")
     public void joinChannel_fail_user_not_found() throws Exception {
@@ -617,7 +620,7 @@ class ChannelServiceUnitTest {
                 .hasMessage("사용자 정보를 찾을 수 없습니다.");
     }
 
-    
+
     @Test
     @DisplayName("채널 가입 실패 - 이미 가입되어 있는 사용자")
     public void joinChannel_fail_already_user_in_channel() throws Exception {
@@ -668,7 +671,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("채널 정보를 찾을 수 없습니다.");
     }
-    
+
     @Test
     @DisplayName("채널 탈퇴 실패 - 비활성화된 채널")
     public void leaveChannel_fail_inactive_channel() throws Exception {
@@ -683,7 +686,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("삭제된 채널입니다.");
     }
-    
+
     @Test
     @DisplayName("채널 탈퇴 실패 - 존재하지 않는 사용자")
     public void leaveChannel_fail_user_not_found() throws Exception {
@@ -699,7 +702,7 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("사용자 정보를 찾을 수 없습니다.");
     }
-    
+
     @Test
     @DisplayName("채널 탈퇴 실패 - 사용자 채널 미가입")
     public void leaveChannel_fail_user_not_in_channel() throws Exception {
@@ -733,7 +736,167 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("소유자는 채널을 탈퇴할 수 없습니다. 권한을 위임하거나 채널을 삭제하세요.");
     }
-    
+
+    @Test
+    @DisplayName("멤버 강퇴 성공")
+    public void kickMember_success() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+
+        ChannelUser targetRelation = new ChannelUser(channel, user2, ChannelGrade.MEMBER);
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetRelation));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        Long kickedUserId = channelService.kickMember(channelId, user2.getId(), userEmail);
+
+        //then
+        assertThat(kickedUserId).isEqualTo(user2.getId());
+
+        ArgumentCaptor<ChannelUser> captor = ArgumentCaptor.forClass(ChannelUser.class);
+
+        verify(channelUserRepository, times(1)).delete(captor.capture());
+
+        ChannelUser deletedValue = captor.getValue();
+
+        assertThat(deletedValue).isEqualTo(targetRelation);
+        assertThat(deletedValue.getUser().getId()).isEqualTo(user2.getId());
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 존재하지 않는 채널")
+    public void kickMember_fail_channel_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 비활성화된 채널")
+    public void kickMember_fail_inactive_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.INACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("삭제된 채널입니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 존재하지 않는 사용자")
+    public void kickMember_fail_user_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 사용자 채널 미가입")
+    public void kickMember_fail_user_not_in_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 권한 없음")
+    public void kickMember_fail_access_denied() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("소유자 권한이 필요합니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 존재하지 않는 목표 사용자")
+    public void kickMember_fail_target_user_not_found() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 목표 사용자 채널 미가입")
+    public void kickMember_fail_target_user_not_in_channel() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.empty());
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 강퇴 실패 - 소유자인 목표 사용자")
+    public void kickMember_fail_target_user_is_admin() throws Exception {
+        //given
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+
+        ChannelUser targetRelation = new ChannelUser(channel, user2, ChannelGrade.ADMIN);
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetRelation));
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("소유자를 채널에서 강퇴할 수 없습니다.");
+    }
+
+
     private void addOrgs() {
         Organization org1 = Organization.builder().name("org1").build();
         Organization org2 = Organization.builder().name("org2").build();
@@ -744,7 +907,7 @@ class ChannelServiceUnitTest {
         channel.addOrganizationChannel(new OrganizationChannel(channel, org1));
         channel.addOrganizationChannel(new OrganizationChannel(channel, org2));
     }
-    
+
     private void assertChannelResponse(Page<ChannelResponse> channelResponses) {
         assertThat(channelResponses.getTotalElements()).isEqualTo(1);
 
