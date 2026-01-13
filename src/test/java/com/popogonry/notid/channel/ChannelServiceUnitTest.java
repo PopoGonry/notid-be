@@ -188,7 +188,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, channelId.toString());
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
 
         addOrgs();
@@ -209,7 +208,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.NAME, channelName);
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
         given(channelRepository.findByNameContaining(channelName, Pageable.unpaged())).willReturn(new PageImpl<>(List.of(channel)));
 
         addOrgs();
@@ -229,7 +227,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.DESCRIPTION, channel.getDescription());
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
         given(channelRepository.findByDescriptionContaining(channel.getDescription(), Pageable.unpaged())).willReturn(new PageImpl<>(List.of(channel)));
 
         addOrgs();
@@ -249,7 +246,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ORGANIZATION, "org1");
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
         given(channelRepository.findByOrganizationName("org1", Pageable.unpaged())).willReturn(new PageImpl<>(List.of(channel)));
 
         addOrgs();
@@ -269,7 +265,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, "notLong");
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
 
         //when
         Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
@@ -286,7 +281,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.ID, Long.toString(channelId + 1L));
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
 
         //when
         Page<ChannelResponse> channelResponses = channelService.searchChannels(request, Pageable.unpaged());
@@ -301,7 +295,6 @@ class ChannelServiceUnitTest {
         //given
         ChannelSearchRequest request = new ChannelSearchRequest(SearchType.NAME, "no result");
 
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
         given(channelRepository.findByNameContaining("no result", Pageable.unpaged())).willReturn(Page.empty());
 
         //when
