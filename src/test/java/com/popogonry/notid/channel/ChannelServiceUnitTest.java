@@ -1,9 +1,6 @@
 package com.popogonry.notid.channel;
 
-import com.popogonry.notid.channel.dto.ChannelCreateRequest;
-import com.popogonry.notid.channel.dto.ChannelResponse;
-import com.popogonry.notid.channel.dto.ChannelSearchRequest;
-import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
+import com.popogonry.notid.channel.dto.*;
 import com.popogonry.notid.channeluser.ChannelGrade;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
@@ -29,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import javax.swing.text.html.Option;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -887,6 +885,203 @@ class ChannelServiceUnitTest {
         assertThatThrownBy(() -> channelService.kickMember(channelId, userId2, userEmail))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("소유자를 채널에서 강퇴할 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("멤버 권한 변경 성공")
+    public void updateMemberGrade_success() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        ChannelUser targetMember = new ChannelUser(channel, user2, ChannelGrade.ADMIN);
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetMember));
+
+        given(channelUserRepository.countByChannelIdAndChannelGrade(channelId, ChannelGrade.ADMIN)).willReturn(2L);
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+
+        //when
+        Long updatedMemberId = channelService.updateMemberGrade(channelId, userId2, request, user.getEmail());
+
+        //then
+        assertThat(updatedMemberId).isEqualTo(user2.getId());
+
+        assertThat(targetMember.getChannelGrade()).isEqualTo(ChannelGrade.MEMBER);
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 존재하지 않는 채널")  
+    public void updateMemberGrade_fail_channel_not_found() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 비활성화된 채널")  
+    public void updateMemberGrade_fail_inactive_channel() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.INACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("삭제된 채널입니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 존재하지 않는 사용자")  
+    public void updateMemberGrade_fail_user_not_found() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 사용자 채널 미가입")  
+    public void updateMemberGrade_fail_user_not_in_channel() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 권한 없음")  
+    public void updateMemberGrade_fail_access_denied() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessage("소유자 권한이 필요합니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 존재하지 않는 목표 사용자")  
+    public void updateMemberGrade_fail_target_user_not_found() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("사용자 정보를 찾을 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 목표 사용자 채널 미가입")  
+    public void updateMemberGrade_fail_target_user_not_in_channel() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("채널에 가입되지 않은 사용자입니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 기존과 같은 권한")  
+    public void updateMemberGrade_fail_grade_is_same() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
+
+        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        ChannelUser targetMember = new ChannelUser(channel, user2, ChannelGrade.MEMBER);
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetMember));
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId2, request, user.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("동일한 권한으로는 변경할 수 없습니다.");
+    }
+    
+    @Test
+    @DisplayName("멤버 권한 변경 실패 - 유일한 소유자")
+    public void updateMemberGrade_fail_admin_is_alone() throws Exception {
+        //given
+        MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
+
+        given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+
+        ChannelUser targetMember = new ChannelUser(channel, user, ChannelGrade.ADMIN);
+
+        given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(targetMember));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+        given(channelUserRepository.countByChannelIdAndChannelGrade(channelId, ChannelGrade.ADMIN)).willReturn(1L);
+
+        ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
+
+        //when
+        //then
+        assertThatThrownBy(() -> channelService.updateMemberGrade(channelId, userId, request, user.getEmail()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("최소 1명의 소유자가 있어야 합니다.");
     }
 
 

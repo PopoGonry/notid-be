@@ -66,7 +66,7 @@ public class ChannelController {
         return ResponseEntity.ok(kickedUserId);
     }
 
-    @GetMapping
+    @GetMapping("/popular")
     public ResponseEntity<Page<ChannelResponse>> getChannelsOrderByMemberCount(
             @PageableDefault(size = 10) Pageable pageable
     ) {
@@ -88,7 +88,7 @@ public class ChannelController {
         return ResponseEntity.ok(ChannelResponse.from(channel));
     }
 
-    @GetMapping("/{channelId}")
+    @GetMapping("/{channelId}/members")
     public ResponseEntity<Page<ChannelMemberResponse>> getMembers(
             @PathVariable Long channelId,
             @PageableDefault(size = 10) Pageable pageable
@@ -97,4 +97,14 @@ public class ChannelController {
         return ResponseEntity.ok(members);
     }
 
+    @PatchMapping("/{channelId}/members/{targetMemberId}")
+    public ResponseEntity<Long> updateMemberGrade(
+            @PathVariable Long channelId,
+            @PathVariable Long targetMemberId,
+            @RequestBody @Valid MemberGradeUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long updatedMemberId = channelService.updateMemberGrade(channelId, targetMemberId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedMemberId);
+    }
 }

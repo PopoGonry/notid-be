@@ -21,4 +21,7 @@ public interface ChannelUserRepository extends JpaRepository<ChannelUser, Long> 
     Optional<ChannelUser> findByChannelIdAndUserId(Long channelId, Long userId);
 
     Page<ChannelUser> findAllByChannelId(Long channelId, Pageable pageable);
+
+
+    long countByChannelIdAndChannelGrade(Long channelId, ChannelGrade channelGrade);
 }
