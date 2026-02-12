@@ -88,9 +88,8 @@ public class UserService {
     }
 
     private boolean validateDuplicatePhone(String phone) {
-        return userRepository.existsByEmail(phone);
+        return userRepository.existsByPhone(phone);
     }
-
 
     public String signIn(UserSignInRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
@@ -116,7 +115,6 @@ public class UserService {
 
         return user;
     }
-
 
     @Transactional
     public Long updateInfo(Long userId, UserUpdateRequest request, String tokenEmail) {
