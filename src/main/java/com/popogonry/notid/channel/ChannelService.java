@@ -9,7 +9,7 @@ import com.popogonry.notid.organization.OrganizationRepository;
 import com.popogonry.notid.organizationchannel.OrganizationChannel;
 import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
 import com.popogonry.notid.user.User;
-import com.popogonry.notid.user.UserRepository;
+import com.popogonry.notid.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,14 +28,14 @@ public class ChannelService {
 
     private final ChannelRepository channelRepository;
     private final ChannelUserRepository channelUserRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final OrganizationRepository organizationRepository;
     private final OrganizationChannelRepository organizationChannelRepository;
 
     @Transactional
     public Long createChannel(ChannelCreateRequest request, String userEmail) {
 
-        User user = getUser(userEmail);
+        User user = userService.getUser(userEmail);
 
         Channel channel = channelRepository.save(request.toEntity());
 
@@ -154,7 +154,7 @@ public class ChannelService {
     public Long joinChannel(Long channelId, String userEmail) {
         Channel channel = validateChannel(channelId);
 
-        User user = getUser(userEmail);
+        User user = userService.getUser(userEmail);
 
         if (channelUserRepository.findByChannelIdAndUserId(channelId, user.getId()).isPresent()) {
             throw new IllegalArgumentException("이미 가입되었거나 가입 승인 대기 중입니다.");
@@ -175,7 +175,7 @@ public class ChannelService {
     public Long leaveChannel(Long channelId, String userEmail) {
         Channel channel = validateChannel(channelId);
 
-        User user = getUser(userEmail);
+        User user = userService.getUser(userEmail);
 
         ChannelUser channelUser = getChannelUser(channel, user);
 
@@ -194,7 +194,7 @@ public class ChannelService {
 
         validateChannelAdmin(userEmail, channel);
 
-        User targetUser = getUser(targetUserId);
+        User targetUser = userService.getUser(targetUserId);
         ChannelUser targetChannelUser = getChannelUser(channel, targetUser);
 
         if (targetChannelUser.getChannelGrade() == ChannelGrade.ADMIN) {
@@ -212,7 +212,7 @@ public class ChannelService {
 
         validateChannelAdmin(userEmail, channel);
 
-        User targetUser = getUser(targetUserId);
+        User targetUser = userService.getUser(targetUserId);
         ChannelUser targetChannelUser = getChannelUser(channel, targetUser);
 
         if (targetChannelUser.getChannelGrade() == request.getChannelGrade()) {
@@ -228,8 +228,12 @@ public class ChannelService {
         return targetUserId;
     }
 
-    private void validateChannelAdmin(String userEmail, Channel channel) {
-        User user = getUser(userEmail);
+    public Page<ChannelResponse> getChannels(Pageable pageable) {
+        return channelRepository.findAll(pageable).map(ChannelResponse::from);
+    }
+
+    public void validateChannelAdmin(String userEmail, Channel channel) {
+        User user = userService.getUser(userEmail);
         ChannelUser channelUser = getChannelUser(channel, user);
 
         if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
@@ -237,7 +241,7 @@ public class ChannelService {
         }
     }
 
-    private Channel validateChannel(Long channelId) {
+    public Channel validateChannel(Long channelId) {
         Channel channel = getChannel(channelId);
 
         if (channel.getStatus() == ChannelStatus.INACTIVE) {
@@ -246,22 +250,17 @@ public class ChannelService {
         return channel;
     }
 
-
     public Page<ChannelResponse> getChannelsOrderByMemberCount(Pageable pageable) {
         PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
 
         return channelRepository.findAllOrderByMemberCountDesc(pageRequest).map(ChannelResponse::from);
     }
 
-    public Page<ChannelResponse> getChannels(Pageable pageable) {
-        return channelRepository.findAll(pageable).map(ChannelResponse::from);
-    }
-
     public Page<ChannelMemberResponse> getMembers(Long channelId, Pageable pageable) {
         return channelUserRepository.findAllByChannelId(channelId, pageable).map(ChannelMemberResponse::from);
     }
 
-    private ChannelUser getChannelUser(Channel channel, User user) {
+    public ChannelUser getChannelUser(Channel channel, User user) {
         return channelUserRepository.findByChannelIdAndUserId(channel.getId(), user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("채널에 가입되지 않은 사용자입니다."));
     }
@@ -271,14 +270,5 @@ public class ChannelService {
                 .orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
     }
 
-    private User getUser(String userEmail) {
-        return userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
-    }
-
-    private User getUser(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
-    }
 }
 

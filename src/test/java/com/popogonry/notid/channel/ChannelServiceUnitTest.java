@@ -11,7 +11,7 @@ import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
 import com.popogonry.notid.user.Gender;
 import com.popogonry.notid.user.User;
 import com.popogonry.notid.user.UserRepository;
-import jakarta.persistence.EntityManager;
+import com.popogonry.notid.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import javax.swing.text.html.Option;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,7 +49,7 @@ class ChannelServiceUnitTest {
     ChannelUserRepository channelUserRepository;
 
     @Mock
-    UserRepository userRepository;
+    UserService userService;
 
     @Mock
     OrganizationRepository organizationRepository;
@@ -58,8 +57,6 @@ class ChannelServiceUnitTest {
     @Mock
     OrganizationChannelRepository organizationChannelRepository;
 
-    @Mock
-    EntityManager em;
 
     User user;
     Long userId;
@@ -120,7 +117,8 @@ class ChannelServiceUnitTest {
         //given
         ChannelCreateRequest request = new ChannelCreateRequest(channelName, "description", JoinType.FREE, new ArrayList<>());
 
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
+        
         given(channelRepository.save(any(Channel.class))).willReturn(channel);
 
         //when
@@ -142,7 +140,7 @@ class ChannelServiceUnitTest {
         List<Long> orgIds = List.of(10L, 20L);
         ChannelCreateRequest request = new ChannelCreateRequest(channelName, "description", JoinType.FREE, orgIds);
 
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelRepository.save(any(Channel.class))).willReturn(channel);
 
         Organization org1 = Organization.builder().name("org1").build();
@@ -165,7 +163,7 @@ class ChannelServiceUnitTest {
         List<Long> orgIds = List.of(10L, 999L);
         ChannelCreateRequest request = new ChannelCreateRequest(channelName, "description", JoinType.FREE, orgIds);
 
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelRepository.save(any(Channel.class))).willReturn(channel);
 
         Organization org1 = Organization.builder().name("org1").build();
@@ -309,7 +307,7 @@ class ChannelServiceUnitTest {
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
         addOrgs();
@@ -352,6 +350,7 @@ class ChannelServiceUnitTest {
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
+        given(userService.getUser(userEmail)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         //when
         //then
@@ -367,7 +366,7 @@ class ChannelServiceUnitTest {
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
 
         //when
         //then
@@ -383,7 +382,7 @@ class ChannelServiceUnitTest {
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(2L, 3L));
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MANAGER)));
 
         //when
@@ -400,7 +399,7 @@ class ChannelServiceUnitTest {
         ChannelUpdateRequest request = new ChannelUpdateRequest("newDes", JoinType.REQUEST, List.of(5L, 6L));
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
         addOrgs();
@@ -422,7 +421,7 @@ class ChannelServiceUnitTest {
     public void deleteChannel_success() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
         addOrgs();
@@ -470,7 +469,8 @@ class ChannelServiceUnitTest {
     public void deleteChannel_fail_not_found_user() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.empty());
+
+        given(userService.getUser(userEmail)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         //when
         //then
@@ -484,7 +484,7 @@ class ChannelServiceUnitTest {
     public void deleteChannel_fail_user_not_in_channel() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.empty());
 
 
@@ -500,7 +500,7 @@ class ChannelServiceUnitTest {
     public void deleteChannel_fail_user_access_denied() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(anyString())).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, userId)).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
 
         //when
@@ -516,7 +516,7 @@ class ChannelServiceUnitTest {
     public void joinChannel_success_free() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -544,7 +544,7 @@ class ChannelServiceUnitTest {
     public void joinChannel_success_request() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -600,7 +600,7 @@ class ChannelServiceUnitTest {
     public void joinChannel_fail_user_not_found() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.empty());
+        given(userService.getUser(userEmail)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
 
@@ -617,7 +617,7 @@ class ChannelServiceUnitTest {
     public void joinChannel_fail_already_user_in_channel() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -634,7 +634,7 @@ class ChannelServiceUnitTest {
     public void leaveChannel_success() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -683,7 +683,7 @@ class ChannelServiceUnitTest {
     public void leaveChannel_fail_user_not_found() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.empty());
+        given(userService.getUser(userEmail)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
 
@@ -699,7 +699,7 @@ class ChannelServiceUnitTest {
     public void leaveChannel_fail_user_not_in_channel() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -716,7 +716,7 @@ class ChannelServiceUnitTest {
     public void leaveChannel_fail_admin_user() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -733,10 +733,10 @@ class ChannelServiceUnitTest {
     public void kickMember_success() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        given(userService.getUser(userId2)).willReturn(user2);
 
         ChannelUser targetRelation = new ChannelUser(channel, user2, ChannelGrade.MEMBER);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetRelation));
@@ -792,7 +792,7 @@ class ChannelServiceUnitTest {
     public void kickMember_fail_user_not_found() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.empty());
+        given(userService.getUser(userEmail)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         //when
         //then
@@ -806,7 +806,7 @@ class ChannelServiceUnitTest {
     public void kickMember_fail_user_not_in_channel() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.empty());
 
         //when
@@ -821,7 +821,7 @@ class ChannelServiceUnitTest {
     public void kickMember_fail_access_denied() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
 
         //when
@@ -836,10 +836,10 @@ class ChannelServiceUnitTest {
     public void kickMember_fail_target_user_not_found() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.empty());
+        given(userService.getUser(userId2)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         //when
         //then
@@ -853,10 +853,11 @@ class ChannelServiceUnitTest {
     public void kickMember_fail_target_user_not_in_channel() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        given(userService.getUser(userId2)).willReturn(user2);
+        
 
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.empty());
 
@@ -872,10 +873,10 @@ class ChannelServiceUnitTest {
     public void kickMember_fail_target_user_is_admin() throws Exception {
         //given
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        given(userService.getUser(userId2)).willReturn(user2);
 
         ChannelUser targetRelation = new ChannelUser(channel, user2, ChannelGrade.ADMIN);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetRelation));
@@ -894,10 +895,10 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        given(userService.getUser(userId2)).willReturn(user2);
         ChannelUser targetMember = new ChannelUser(channel, user2, ChannelGrade.ADMIN);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetMember));
 
@@ -944,15 +945,15 @@ class ChannelServiceUnitTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("삭제된 채널입니다.");
     }
-    
+
     @Test
-    @DisplayName("멤버 권한 변경 실패 - 존재하지 않는 사용자")  
+    @DisplayName("멤버 권한 변경 실패 - 존재하지 않는 사용자")
     public void updateMemberGrade_fail_user_not_found() throws Exception {
         //given
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-
+        given(userService.getUser(userEmail)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
         //when
@@ -969,7 +970,7 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
         //when
@@ -986,7 +987,7 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.MEMBER)));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
@@ -1004,9 +1005,9 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
-
+        given(userService.getUser(userId2)).willThrow(new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
         //when
@@ -1023,10 +1024,10 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        given(userService.getUser(userId2)).willReturn(user2);
 
         ReflectionTestUtils.setField(channel, "status", ChannelStatus.ACTIVE);
         //when
@@ -1043,10 +1044,10 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(new ChannelUser(channel, user, ChannelGrade.ADMIN)));
 
-        given(userRepository.findById(userId2)).willReturn(Optional.of(user2));
+        given(userService.getUser(userId2)).willReturn(user2);
         ChannelUser targetMember = new ChannelUser(channel, user2, ChannelGrade.MEMBER);
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user2.getId())).willReturn(Optional.of(targetMember));
 
@@ -1066,12 +1067,12 @@ class ChannelServiceUnitTest {
         MemberGradeUpdateRequest request = new MemberGradeUpdateRequest(ChannelGrade.MEMBER);
 
         given(channelRepository.findById(channelId)).willReturn(Optional.of(channel));
-        given(userRepository.findByEmail(userEmail)).willReturn(Optional.of(user));
+        given(userService.getUser(userEmail)).willReturn(user);
 
         ChannelUser targetMember = new ChannelUser(channel, user, ChannelGrade.ADMIN);
 
         given(channelUserRepository.findByChannelIdAndUserId(channelId, user.getId())).willReturn(Optional.of(targetMember));
-        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(userService.getUser(userId)).willReturn(user);
 
         given(channelUserRepository.countByChannelIdAndChannelGrade(channelId, ChannelGrade.ADMIN)).willReturn(1L);
 
