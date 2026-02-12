@@ -72,6 +72,7 @@ public class ChannelController {
     ) {
         Long leavedChannelId = channelService.leaveChannel(channelId, userDetails.getUsername());
         return ResponseEntity.ok(leavedChannelId);
+    }
     @DeleteMapping("/{channelId}/members/{targetUserId}")
     public ResponseEntity<Long> kickMember(
             @PathVariable Long channelId,

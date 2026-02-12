@@ -12,17 +12,12 @@ import java.util.List;
 
 
 @Getter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChannelUpdateRequest {
     private String description;
 
-    @NotNull
-    @Builder.Default
     private JoinType joinType = JoinType.FREE;
 
-    @NotNull
-    @Builder.Default
     private List<Long> organizationIds = new ArrayList<>();
 }

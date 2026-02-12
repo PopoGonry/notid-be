@@ -17,7 +17,6 @@ import java.util.List;
 public class ChannelCreateRequest {
 
     @NotBlank(message = "채널 이름은 필수입니다.")
-    @Column(nullable = false)
     private String name;
 
     private String description;
