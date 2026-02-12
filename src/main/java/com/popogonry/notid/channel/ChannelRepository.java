@@ -26,4 +26,12 @@ public interface ChannelRepository extends JpaRepository<Channel, Long> {
                     "join oc.organization o " +
                     "where o.name like %:keyword%")
     Page<Channel> findByOrganizationName(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query(value = "SELECT c FROM Channel c " +
+            "LEFT JOIN ChannelUser cu ON cu.channel = c " +
+            "GROUP BY c " +
+            "ORDER BY COUNT(cu) DESC",
+            countQuery = "SELECT COUNT(c) FROM Channel c"
+    )
+    Page<Channel> findAllOrderByMemberCountDesc(Pageable pageable);
 }

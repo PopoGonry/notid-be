@@ -1,9 +1,6 @@
 package com.popogonry.notid.channel;
 
-import com.popogonry.notid.channel.dto.ChannelCreateRequest;
-import com.popogonry.notid.channel.dto.ChannelResponse;
-import com.popogonry.notid.channel.dto.ChannelSearchRequest;
-import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
+import com.popogonry.notid.channel.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -34,10 +31,9 @@ public class ChannelController {
     @GetMapping("/search")
     public ResponseEntity<Page<ChannelResponse>> searchChannels(
             @ModelAttribute @Valid ChannelSearchRequest request,
-            @AuthenticationPrincipal UserDetails userDetails,
             @PageableDefault(size = 10) Pageable pageable
     ) {
-        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, userDetails.getUsername(), pageable);
+        Page<ChannelResponse> channelResponses = channelService.searchChannels(request, pageable);
         return ResponseEntity.ok(channelResponses);
     }
 
@@ -58,5 +54,57 @@ public class ChannelController {
     ) {
         Long deletedChannelId = channelService.deleteChannel(channelId, userDetails.getUsername());
         return ResponseEntity.ok(deletedChannelId);
+    }
+
+    @DeleteMapping("/{channelId}/members/{targetUserId}")
+    public ResponseEntity<Long> kickMember(
+            @PathVariable Long channelId,
+            @PathVariable Long targetUserId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long kickedUserId = channelService.kickMember(channelId, targetUserId, userDetails.getUsername());
+        return ResponseEntity.ok(kickedUserId);
+    }
+
+    @GetMapping("/popular")
+    public ResponseEntity<Page<ChannelResponse>> getChannelsOrderByMemberCount(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(channelService.getChannelsOrderByMemberCount(pageable));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<ChannelResponse>> getChannels(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseEntity.ok(channelService.getChannels(pageable));
+    }
+
+    @GetMapping("/{channelId}")
+    public ResponseEntity<ChannelResponse> getChannel(
+            @PathVariable Long channelId
+    ) {
+        Channel channel = channelService.getChannel(channelId);
+        return ResponseEntity.ok(ChannelResponse.from(channel));
+    }
+
+    @GetMapping("/{channelId}/members")
+    public ResponseEntity<Page<ChannelMemberResponse>> getMembers(
+            @PathVariable Long channelId,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<ChannelMemberResponse> members = channelService.getMembers(channelId, pageable);
+        return ResponseEntity.ok(members);
+    }
+
+    @PatchMapping("/{channelId}/members/{targetMemberId}")
+    public ResponseEntity<Long> updateMemberGrade(
+            @PathVariable Long channelId,
+            @PathVariable Long targetMemberId,
+            @RequestBody @Valid MemberGradeUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long updatedMemberId = channelService.updateMemberGrade(channelId, targetMemberId, request, userDetails.getUsername());
+        return ResponseEntity.ok(updatedMemberId);
     }
 }

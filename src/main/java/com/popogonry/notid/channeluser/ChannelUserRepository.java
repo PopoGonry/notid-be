@@ -1,5 +1,9 @@
 package com.popogonry.notid.channeluser;
 
+import com.popogonry.notid.channel.Channel;
+import com.popogonry.notid.user.dto.UserResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,4 +19,9 @@ public interface ChannelUserRepository extends JpaRepository<ChannelUser, Long> 
     void deleteAllByUserId(@Param("userId") Long userId);
 
     Optional<ChannelUser> findByChannelIdAndUserId(Long channelId, Long userId);
+
+    Page<ChannelUser> findAllByChannelId(Long channelId, Pageable pageable);
+
+
+    long countByChannelIdAndChannelGrade(Long channelId, ChannelGrade channelGrade);
 }

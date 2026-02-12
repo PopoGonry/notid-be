@@ -1,9 +1,6 @@
 package com.popogonry.notid.channel;
 
-import com.popogonry.notid.channel.dto.ChannelCreateRequest;
-import com.popogonry.notid.channel.dto.ChannelResponse;
-import com.popogonry.notid.channel.dto.ChannelSearchRequest;
-import com.popogonry.notid.channel.dto.ChannelUpdateRequest;
+import com.popogonry.notid.channel.dto.*;
 import com.popogonry.notid.channeluser.ChannelGrade;
 import com.popogonry.notid.channeluser.ChannelUser;
 import com.popogonry.notid.channeluser.ChannelUserRepository;
@@ -14,9 +11,9 @@ import com.popogonry.notid.organizationchannel.OrganizationChannelRepository;
 import com.popogonry.notid.user.User;
 import com.popogonry.notid.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -68,9 +65,7 @@ public class ChannelService {
         }
     }
 
-    public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, String tokenEmail, Pageable pageable) {
-        getUser(tokenEmail);
-
+    public Page<ChannelResponse> searchChannels(ChannelSearchRequest request, Pageable pageable) {
         String keyword = request.getKeyword();
 
         Page<Channel> channelResponses = switch (request.getSearchType()) {
@@ -102,13 +97,7 @@ public class ChannelService {
     @Transactional
     public Long updateChannel(Long channelId, ChannelUpdateRequest request, String userEmail) {
         Channel channel = getChannel(channelId);
-        User user = getUser(userEmail);
-
-        ChannelUser channelUser = getChannelUser(channel, user);
-
-        if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
-            throw new AccessDeniedException("소유자 권한이 필요합니다.");
-        }
+        validateChannelAdmin(userEmail, channel);
 
         channel.updateChannel(request.getDescription(), request.getJoinType());
 
@@ -153,19 +142,9 @@ public class ChannelService {
 
     @Transactional
     public Long deleteChannel(Long channelId, String userEmail) {
-        Channel channel = getChannel(channelId);
+        Channel channel = validateChannel(channelId);
 
-        if (channel.getStatus() == ChannelStatus.INACTIVE) {
-            throw new IllegalArgumentException("삭제된 채널입니다.");
-        }
-
-        User user = getUser(userEmail);
-
-        ChannelUser channelUser = getChannelUser(channel, user);
-
-        if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
-            throw new AccessDeniedException("소유자 권한이 필요합니다.");
-        }
+        validateChannelAdmin(userEmail, channel);
 
         channel.inactive();
         return channel.getId();
@@ -173,11 +152,7 @@ public class ChannelService {
 
     @Transactional
     public Long joinChannel(Long channelId, String userEmail) {
-        Channel channel = getChannel(channelId);
-
-        if (channel.getStatus() == ChannelStatus.INACTIVE) {
-            throw new IllegalArgumentException("삭제된 채널입니다.");
-        }
+        Channel channel = validateChannel(channelId);
 
         User user = getUser(userEmail);
 
@@ -198,11 +173,7 @@ public class ChannelService {
 
     @Transactional
     public Long leaveChannel(Long channelId, String userEmail) {
-        Channel channel = getChannel(channelId);
-
-        if (channel.getStatus() == ChannelStatus.INACTIVE) {
-            throw new IllegalArgumentException("삭제된 채널입니다.");
-        }
+        Channel channel = validateChannel(channelId);
 
         User user = getUser(userEmail);
 
@@ -217,12 +188,85 @@ public class ChannelService {
         return channel.getId();
     }
 
+    @Transactional
+    public Long kickMember(Long channelId, Long targetUserId, String userEmail) {
+        Channel channel = validateChannel(channelId);
+
+        validateChannelAdmin(userEmail, channel);
+
+        User targetUser = getUser(targetUserId);
+        ChannelUser targetChannelUser = getChannelUser(channel, targetUser);
+
+        if (targetChannelUser.getChannelGrade() == ChannelGrade.ADMIN) {
+            throw new IllegalArgumentException("소유자를 채널에서 강퇴할 수 없습니다.");
+        }
+
+        channelUserRepository.delete(targetChannelUser);
+
+        return targetUser.getId();
+    }
+    
+    @Transactional
+    public Long updateMemberGrade(Long channelId, Long targetUserId, MemberGradeUpdateRequest request, String userEmail) {
+        Channel channel = validateChannel(channelId);
+
+        validateChannelAdmin(userEmail, channel);
+
+        User targetUser = getUser(targetUserId);
+        ChannelUser targetChannelUser = getChannelUser(channel, targetUser);
+
+        if (targetChannelUser.getChannelGrade() == request.getChannelGrade()) {
+            throw new IllegalArgumentException("동일한 권한으로는 변경할 수 없습니다.");
+        }
+
+        if (targetChannelUser.getChannelGrade() == ChannelGrade.ADMIN && channelUserRepository.countByChannelIdAndChannelGrade(channelId, ChannelGrade.ADMIN) == 1) {
+            throw new IllegalStateException("최소 1명의 소유자가 있어야 합니다.");
+        }
+
+        targetChannelUser.updateGrade(request.getChannelGrade());
+
+        return targetUserId;
+    }
+
+    private void validateChannelAdmin(String userEmail, Channel channel) {
+        User user = getUser(userEmail);
+        ChannelUser channelUser = getChannelUser(channel, user);
+
+        if (channelUser.getChannelGrade() != ChannelGrade.ADMIN) {
+            throw new AccessDeniedException("소유자 권한이 필요합니다.");
+        }
+    }
+
+    private Channel validateChannel(Long channelId) {
+        Channel channel = getChannel(channelId);
+
+        if (channel.getStatus() == ChannelStatus.INACTIVE) {
+            throw new IllegalArgumentException("삭제된 채널입니다.");
+        }
+        return channel;
+    }
+
+
+    public Page<ChannelResponse> getChannelsOrderByMemberCount(Pageable pageable) {
+        PageRequest pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+
+        return channelRepository.findAllOrderByMemberCountDesc(pageRequest).map(ChannelResponse::from);
+    }
+
+    public Page<ChannelResponse> getChannels(Pageable pageable) {
+        return channelRepository.findAll(pageable).map(ChannelResponse::from);
+    }
+
+    public Page<ChannelMemberResponse> getMembers(Long channelId, Pageable pageable) {
+        return channelUserRepository.findAllByChannelId(channelId, pageable).map(ChannelMemberResponse::from);
+    }
+
     private ChannelUser getChannelUser(Channel channel, User user) {
         return channelUserRepository.findByChannelIdAndUserId(channel.getId(), user.getId())
                 .orElseThrow(() -> new IllegalArgumentException("채널에 가입되지 않은 사용자입니다."));
     }
 
-    private Channel getChannel(Long channelId) {
+    public Channel getChannel(Long channelId) {
         return channelRepository.findById(channelId)
                 .orElseThrow(() -> new IllegalArgumentException("채널 정보를 찾을 수 없습니다."));
     }
@@ -232,5 +276,9 @@ public class ChannelService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
 
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+    }
 }
 
