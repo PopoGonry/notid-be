@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final UserRepository userRepository;
 
     @PostMapping("/signup")
     public ResponseEntity<Long> signup(@RequestBody @Valid UserSignUpRequest request) {
@@ -30,9 +30,16 @@ public class UserController {
     }
 
     @PostMapping("/signin")
-    public ResponseEntity<UserSignInResponse> signin(@RequestBody @Valid UserSignInRequest request) {
+    public ResponseEntity<UserSignInResponse> signIn(@RequestBody @Valid UserSignInRequest request) {
         String token = userService.signIn(request);
         return ResponseEntity.ok(new UserSignInResponse(token));
+    }
+
+    @PostMapping("/signout")
+    public ResponseEntity<Void> signOut() {
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{userId}")
@@ -87,7 +94,14 @@ public class UserController {
         return ResponseEntity.ok(deletedUserId);
     }
 
-
+    @GetMapping("/check-duplicate")
+    public ResponseEntity<Boolean> checkDuplicate(
+            @RequestParam String type,
+            @RequestParam String value
+    ) {
+        boolean isDuplicate = userService.validateDuplicate(type, value);
+        return ResponseEntity.ok(isDuplicate);
+    }
 
     @GetMapping("/test")
     public String test() {

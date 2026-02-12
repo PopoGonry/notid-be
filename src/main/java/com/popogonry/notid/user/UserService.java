@@ -64,16 +64,33 @@ public class UserService {
     }
 
     private void validateDuplicateUser(UserSignUpRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (validateDuplicateEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
         }
-        if (userRepository.existsByPhone(request.getPhone())) {
+        if (validateDuplicatePhone(request.getPhone())) {
             throw new IllegalArgumentException("이미 존재하는 연락처입니다.");
         }
         if (!request.isNewPasswordSame()) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
     }
+
+    public boolean validateDuplicate(String type, String value) {
+        return switch (type) {
+            case "email" -> validateDuplicateEmail(value);
+            case "phone" -> validateDuplicatePhone(value);
+            default -> throw new IllegalArgumentException("존재하지 않는 타입입니다.");
+        };
+    }
+
+    private boolean validateDuplicateEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
+    private boolean validateDuplicatePhone(String phone) {
+        return userRepository.existsByEmail(phone);
+    }
+
 
     public String signIn(UserSignInRequest request) {
         User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));

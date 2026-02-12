@@ -56,6 +56,22 @@ public class ChannelController {
         return ResponseEntity.ok(deletedChannelId);
     }
 
+    @PostMapping("/{channelId}/join")
+    public ResponseEntity<Long> joinChannel(
+            @PathVariable Long channelId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long joinedChannelId = channelService.joinChannel(channelId, userDetails.getUsername());
+        return ResponseEntity.ok(joinedChannelId);
+    }
+
+    @PostMapping("/{channelId}/leave")
+    public ResponseEntity<Long> leaveChannel(
+            @PathVariable Long channelId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Long leavedChannelId = channelService.leaveChannel(channelId, userDetails.getUsername());
+        return ResponseEntity.ok(leavedChannelId);
     @DeleteMapping("/{channelId}/members/{targetUserId}")
     public ResponseEntity<Long> kickMember(
             @PathVariable Long channelId,
