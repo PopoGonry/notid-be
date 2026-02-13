@@ -47,8 +47,8 @@ public class UserController {
             @PathVariable("userId") Long userId,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        User user = userService.getUser(userId, userDetails.getUsername());
-        return ResponseEntity.ok(UserResponse.from(user));
+        UserResponse userResponse = userService.getVerifiedUser(userId, userDetails.getUsername());
+        return ResponseEntity.ok(userResponse);
     }
 
     @PatchMapping("/{userId}")
@@ -99,7 +99,7 @@ public class UserController {
             @RequestParam String type,
             @RequestParam String value
     ) {
-        boolean isDuplicate = userService.validateDuplicate(type, value);
+        boolean isDuplicate = userService.isDuplicate(type, value);
         return ResponseEntity.ok(isDuplicate);
     }
 

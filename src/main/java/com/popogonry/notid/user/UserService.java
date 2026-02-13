@@ -64,31 +64,31 @@ public class UserService {
     }
 
     private void validateDuplicateUser(UserSignUpRequest request) {
-        if (validateDuplicateEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
-        }
-        if (validateDuplicatePhone(request.getPhone())) {
-            throw new IllegalArgumentException("이미 존재하는 연락처입니다.");
-        }
+        validateDuplicateEmail(request.getEmail());
+        validateDuplicatePhone(request.getPhone());
         if (!request.isNewPasswordSame()) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
     }
 
-    public boolean validateDuplicate(String type, String value) {
+    private void validateDuplicateEmail(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+        }
+    }
+
+    private void validateDuplicatePhone(String phone) {
+        if (userRepository.existsByPhone(phone)) {
+            throw new IllegalArgumentException("이미 존재하는 연락처입니다.");
+        }
+    }
+
+    public boolean isDuplicate(String type, String value) {
         return switch (type) {
-            case "email" -> validateDuplicateEmail(value);
-            case "phone" -> validateDuplicatePhone(value);
+            case "email" -> userRepository.existsByEmail(value);
+            case "phone" -> userRepository.existsByPhone(value);
             default -> throw new IllegalArgumentException("존재하지 않는 타입입니다.");
         };
-    }
-
-    private boolean validateDuplicateEmail(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    private boolean validateDuplicatePhone(String phone) {
-        return userRepository.existsByPhone(phone);
     }
 
     public String signIn(UserSignInRequest request) {
@@ -109,17 +109,17 @@ public class UserService {
         }
     }
 
-    public User getUser(Long userId, String tokenEmail) {
-        User user = getUserById(userId);
+    public UserResponse getVerifiedUser(Long userId, String tokenEmail) {
+        User user = getUser(userId);
         validateOwner(user, tokenEmail);
 
-        return user;
+        return UserResponse.from(user);
     }
 
     @Transactional
     public Long updateInfo(Long userId, UserUpdateRequest request, String tokenEmail) {
 
-        User targetUser = getUserById(userId);
+        User targetUser = getUser(userId);
 
         validateOwner(targetUser, tokenEmail);
 
@@ -148,7 +148,7 @@ public class UserService {
 
     @Transactional
     public Long updatePassword(Long userId, UserPasswordUpdateRequest request, String tokenEmail) {
-        User user = getUserById(userId);
+        User user = getUser(userId);
 
         validateOwner(user, tokenEmail);
 
@@ -175,7 +175,7 @@ public class UserService {
 
     @Transactional
     public Long withdraw(Long userId, UserWithdrawRequest request, String tokenEmail) {
-        User user = getUserById(userId);
+        User user = getUser(userId);
 
         validateOwner(user, tokenEmail);
 
@@ -194,10 +194,6 @@ public class UserService {
 
         em.clear();
         return userId;
-    }
-
-    private User getUserById(Long userId) {
-        return userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("유저 정보를 찾을 수 없습니다."));
     }
 
     public User getUser(String userEmail) {
