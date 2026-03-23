@@ -241,6 +241,15 @@ public class ChannelService {
         }
     }
 
+    public void validateChannelManager(String userEmail, Channel channel) {
+        User user = userService.getUser(userEmail);
+        ChannelUser channelUser = getChannelUser(channel, user);
+
+        if (!(channelUser.getChannelGrade() == ChannelGrade.ADMIN || channelUser.getChannelGrade() == ChannelGrade.MANAGER)) {
+            throw new AccessDeniedException("관리자 권한 이상이 필요합니다.");
+        }
+    }
+
     public Channel validateChannel(Long channelId) {
         Channel channel = getChannel(channelId);
 
