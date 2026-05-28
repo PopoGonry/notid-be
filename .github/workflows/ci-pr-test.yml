@@ -1,0 +1,28 @@
+name: NotiD CI (PR Test)
+
+# 오직 PR이 생성되거나 업데이트될 때만 실행됩니다.
+on:
+  pull_request:
+    branches: [ "master", "develop" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 25
+      uses: actions/setup-java@v4
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    # H2 DB를 이용해 전체 단위 테스트를 꼼꼼하게 진행합니다.
+    - name: Run Tests
+      run: ./gradlew clean build
