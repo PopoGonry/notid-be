@@ -1,0 +1,23 @@
+# Docker 빌드 컨텍스트에서 제외 (build/libs/*.jar 는 명시적으로 다시 포함)
+.git
+.github
+.gradle
+.idea
+out/
+*.iml
+.vscode/
+
+# 로컬 H2 DB 파일은 절대 이미지에 들어가면 안 됨
+notid.mv.db
+*.mv.db
+*.trace.db
+
+# 문서 / IDE 잡파일
+HELP.md
+README.md
+LICENSE
+
+# build/ 전체는 무겁지만 우리는 build/libs/notid-*.jar 만 필요함
+# → 일단 전체 제외 후 jar 만 다시 포함
+build/**
+!build/libs/notid-0.0.1-SNAPSHOT.jar

@@ -46,3 +46,4 @@ notid.mv.db
 generated/
 src/main/generated/
 **/generated/
+/CLAUDE.md
